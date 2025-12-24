@@ -25,11 +25,19 @@ export default function ProductRatingsPage({ params }) {
     battery_score: '',
     performance_score: '',
     display_score: '',
+    camera_details: [],
+    battery_details: [],
+    performance_details: [],
+    display_details: [],
     pros: [],
     cons: []
   })
   const [newPro, setNewPro] = useState('')
   const [newCon, setNewCon] = useState('')
+  const [newCameraDetail, setNewCameraDetail] = useState('')
+  const [newBatteryDetail, setNewBatteryDetail] = useState('')
+  const [newPerformanceDetail, setNewPerformanceDetail] = useState('')
+  const [newDisplayDetail, setNewDisplayDetail] = useState('')
 
   useEffect(() => {
     const unwrapParams = async () => {
@@ -63,6 +71,10 @@ export default function ProductRatingsPage({ params }) {
           battery_score: ratingRes.data.battery_score?.toString() || '',
           performance_score: ratingRes.data.performance_score?.toString() || '',
           display_score: ratingRes.data.display_score?.toString() || '',
+          camera_details: ratingRes.data.camera_details?.details || [],
+          battery_details: ratingRes.data.battery_details?.details || [],
+          performance_details: ratingRes.data.performance_details?.details || [],
+          display_details: ratingRes.data.display_details?.details || [],
           pros: ratingRes.data.pros || [],
           cons: ratingRes.data.cons || []
         })
@@ -113,6 +125,74 @@ export default function ProductRatingsPage({ params }) {
     }))
   }
 
+  const handleAddCameraDetail = () => {
+    if (newCameraDetail.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        camera_details: [...prev.camera_details, newCameraDetail.trim()]
+      }))
+      setNewCameraDetail('')
+    }
+  }
+
+  const handleRemoveCameraDetail = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      camera_details: prev.camera_details.filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleAddBatteryDetail = () => {
+    if (newBatteryDetail.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        battery_details: [...prev.battery_details, newBatteryDetail.trim()]
+      }))
+      setNewBatteryDetail('')
+    }
+  }
+
+  const handleRemoveBatteryDetail = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      battery_details: prev.battery_details.filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleAddPerformanceDetail = () => {
+    if (newPerformanceDetail.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        performance_details: [...prev.performance_details, newPerformanceDetail.trim()]
+      }))
+      setNewPerformanceDetail('')
+    }
+  }
+
+  const handleRemovePerformanceDetail = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      performance_details: prev.performance_details.filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleAddDisplayDetail = () => {
+    if (newDisplayDetail.trim()) {
+      setFormData(prev => ({
+        ...prev,
+        display_details: [...prev.display_details, newDisplayDetail.trim()]
+      }))
+      setNewDisplayDetail('')
+    }
+  }
+
+  const handleRemoveDisplayDetail = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      display_details: prev.display_details.filter((_, i) => i !== index)
+    }))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
@@ -125,6 +205,10 @@ export default function ProductRatingsPage({ params }) {
         battery_score: formData.battery_score ? parseFloat(formData.battery_score) : null,
         performance_score: formData.performance_score ? parseFloat(formData.performance_score) : null,
         display_score: formData.display_score ? parseFloat(formData.display_score) : null,
+        camera_details: { details: formData.camera_details },
+        battery_details: { details: formData.battery_details },
+        performance_details: { details: formData.performance_details },
+        display_details: { details: formData.display_details },
         pros: formData.pros,
         cons: formData.cons,
         updated_at: new Date().toISOString()
@@ -213,6 +297,31 @@ export default function ProductRatingsPage({ params }) {
                   onChange={(e) => setFormData(prev => ({ ...prev, camera_score: e.target.value }))}
                   placeholder="8.0"
                 />
+                <div className="mt-2 space-y-2">
+                  <Label className="text-sm">Camera Details</Label>
+                  {formData.camera_details.map((detail, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-sm flex-1">{detail}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveCameraDetail(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input
+                      value={newCameraDetail}
+                      onChange={(e) => setNewCameraDetail(e.target.value)}
+                      placeholder="e.g., Strong main camera"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCameraDetail())}
+                    />
+                    <Button type="button" onClick={handleAddCameraDetail}>Add</Button>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -227,6 +336,31 @@ export default function ProductRatingsPage({ params }) {
                   onChange={(e) => setFormData(prev => ({ ...prev, battery_score: e.target.value }))}
                   placeholder="9.0"
                 />
+                <div className="mt-2 space-y-2">
+                  <Label className="text-sm">Battery Details</Label>
+                  {formData.battery_details.map((detail, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-sm flex-1">{detail}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveBatteryDetail(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input
+                      value={newBatteryDetail}
+                      onChange={(e) => setNewBatteryDetail(e.target.value)}
+                      placeholder="e.g., All-day battery"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddBatteryDetail())}
+                    />
+                    <Button type="button" onClick={handleAddBatteryDetail}>Add</Button>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -241,6 +375,31 @@ export default function ProductRatingsPage({ params }) {
                   onChange={(e) => setFormData(prev => ({ ...prev, performance_score: e.target.value }))}
                   placeholder="9.5"
                 />
+                <div className="mt-2 space-y-2">
+                  <Label className="text-sm">Performance Details</Label>
+                  {formData.performance_details.map((detail, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-sm flex-1">{detail}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemovePerformanceDetail(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input
+                      value={newPerformanceDetail}
+                      onChange={(e) => setNewPerformanceDetail(e.target.value)}
+                      placeholder="e.g., Strong performance"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddPerformanceDetail())}
+                    />
+                    <Button type="button" onClick={handleAddPerformanceDetail}>Add</Button>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -255,6 +414,31 @@ export default function ProductRatingsPage({ params }) {
                   onChange={(e) => setFormData(prev => ({ ...prev, display_score: e.target.value }))}
                   placeholder="8.8"
                 />
+                <div className="mt-2 space-y-2">
+                  <Label className="text-sm">Display Details</Label>
+                  {formData.display_details.map((detail, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-sm flex-1">{detail}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveDisplayDetail(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input
+                      value={newDisplayDetail}
+                      onChange={(e) => setNewDisplayDetail(e.target.value)}
+                      placeholder="e.g., OLED/AMOLED display"
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddDisplayDetail())}
+                    />
+                    <Button type="button" onClick={handleAddDisplayDetail}>Add</Button>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 import { useToast } from "@/components/ui/toast"
-import { Edit, Trash2, Search, Image as ImageIcon, Palette, FileText, Star } from "lucide-react"
+import { Edit, Trash2, Search, Image as ImageIcon, Palette, FileText, Star, Layers } from "lucide-react"
 
 export function ProductsTable({ initialProducts }) {
   const router = useRouter()
@@ -141,8 +141,16 @@ export function ProductsTable({ initialProducts }) {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => router.push(`/products/${product.id}/key-specs`)}
+                        title="Key Specifications"
+                      >
+                        <Layers className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => router.push(`/products/${product.id}/specs`)}
-                        title="Manage Specs"
+                        title="Full Specifications"
                       >
                         <FileText className="h-4 w-4" />
                       </Button>

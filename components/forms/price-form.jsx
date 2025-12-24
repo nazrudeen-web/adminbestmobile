@@ -25,8 +25,6 @@ export function PriceForm({ priceId }) {
     store_id: '',
     price: '',
     old_price: '',
-    stock_status: 'in_stock',
-    delivery_info: '',
     affiliate_url: ''
   })
 
@@ -107,9 +105,12 @@ export function PriceForm({ priceId }) {
 
       if (error) throw error
       setFormData({
-        ...data,
+        product_id: data.product_id || '',
+        variant_id: data.variant_id || '',
+        store_id: data.store_id || '',
         price: data.price?.toString() || '',
-        old_price: data.old_price?.toString() || ''
+        old_price: data.old_price?.toString() || '',
+        affiliate_url: data.affiliate_url || ''
       })
     } catch (error) {
       console.error('Error fetching price:', error)
@@ -139,8 +140,6 @@ export function PriceForm({ priceId }) {
         store_id: formData.store_id,
         price: parseFloat(formData.price),
         old_price: formData.old_price ? parseFloat(formData.old_price) : null,
-        stock_status: formData.stock_status,
-        delivery_info: formData.delivery_info,
         affiliate_url: formData.affiliate_url,
         updated_at: new Date().toISOString()
       }
@@ -280,31 +279,6 @@ export function PriceForm({ priceId }) {
                 placeholder="e.g., 4499.00"
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stock_status">Stock Status</Label>
-            <Select
-              id="stock_status"
-              name="stock_status"
-              value={formData.stock_status}
-              onChange={handleChange}
-            >
-              <option value="in_stock">In Stock</option>
-              <option value="out_of_stock">Out of Stock</option>
-              <option value="pre_order">Pre-order</option>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="delivery_info">Delivery Info</Label>
-            <Input
-              id="delivery_info"
-              name="delivery_info"
-              value={formData.delivery_info}
-              onChange={handleChange}
-              placeholder="e.g., 1-3 business days"
-            />
           </div>
 
           <div className="space-y-2">

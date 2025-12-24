@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/toast"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
-import { Trash2, Edit } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 
 export default function ProductVariantsPage({ params }) {
@@ -24,6 +24,7 @@ export default function ProductVariantsPage({ params }) {
   const [formData, setFormData] = useState({
     storage: '',
     color: '',
+    color_hex: '',
     variant_image: ''
   })
 
@@ -83,7 +84,12 @@ export default function ProductVariantsPage({ params }) {
         description: "Variant added successfully"
       })
 
-      setFormData({ storage: '', color: '', variant_image: '' })
+      setFormData({ 
+        storage: '', 
+        color: '', 
+        color_hex: '',
+        variant_image: ''
+      })
       fetchData()
     } catch (error) {
       console.error('Error adding variant:', error)
@@ -145,7 +151,7 @@ export default function ProductVariantsPage({ params }) {
                   value={formData.storage}
                   onChange={(e) => setFormData(prev => ({ ...prev, storage: e.target.value }))}
                   required
-                  placeholder="e.g., 128GB"
+                  placeholder="e.g., 256GB, 512GB, 1TB"
                 />
               </div>
 
@@ -156,8 +162,28 @@ export default function ProductVariantsPage({ params }) {
                   value={formData.color}
                   onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
                   required
-                  placeholder="e.g., Black"
+                  placeholder="e.g., Natural Titanium"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="color_hex">Color Hex Code</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="color_hex"
+                    value={formData.color_hex}
+                    onChange={(e) => setFormData(prev => ({ ...prev, color_hex: e.target.value }))}
+                    placeholder="e.g., #E8E3D9"
+                  />
+                  {formData.color_hex && (
+                    <div 
+                      className="w-10 h-10 rounded border" 
+                      style={{ backgroundColor: formData.color_hex }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -169,6 +195,9 @@ export default function ProductVariantsPage({ params }) {
                 onChange={(e) => setFormData(prev => ({ ...prev, variant_image: e.target.value }))}
                 placeholder="Optional"
               />
+              {formData.variant_image && (
+                <img src={formData.variant_image} alt="Preview" className="mt-2 h-32 w-auto object-contain border rounded" />
+              )}
             </div>
 
             <Button type="submit">Add Variant</Button>
@@ -186,21 +215,31 @@ export default function ProductVariantsPage({ params }) {
               <TableRow>
                 <TableHead>Storage</TableHead>
                 <TableHead>Color</TableHead>
+                <TableHead>Color Preview</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {variants.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     No variants added yet
                   </TableCell>
                 </TableRow>
               ) : (
                 variants.map((variant) => (
                   <TableRow key={variant.id}>
-                    <TableCell>{variant.storage}</TableCell>
+                    <TableCell className="font-medium">{variant.storage}</TableCell>
                     <TableCell>{variant.color}</TableCell>
+                    <TableCell>
+                      {variant.color_hex && (
+                        <div 
+                          className="w-8 h-8 rounded border" 
+                          style={{ backgroundColor: variant.color_hex }}
+                          title={variant.color_hex}
+                        />
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"

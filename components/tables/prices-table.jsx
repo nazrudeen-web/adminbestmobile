@@ -13,7 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 import { useToast } from "@/components/ui/toast"
@@ -61,24 +60,6 @@ export function PricesTable({ initialPrices }) {
     }
   }
 
-  const getStockBadgeVariant = (status) => {
-    switch (status) {
-      case 'in_stock': return 'default'
-      case 'out_of_stock': return 'destructive'
-      case 'pre_order': return 'secondary'
-      default: return 'default'
-    }
-  }
-
-  const getStockLabel = (status) => {
-    switch (status) {
-      case 'in_stock': return 'In Stock'
-      case 'out_of_stock': return 'Out of Stock'
-      case 'pre_order': return 'Pre-order'
-      default: return status
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -101,7 +82,6 @@ export function PricesTable({ initialPrices }) {
               <TableHead>Variant</TableHead>
               <TableHead>Store</TableHead>
               <TableHead>Price</TableHead>
-              <TableHead>Stock</TableHead>
               <TableHead>Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -109,7 +89,7 @@ export function PricesTable({ initialPrices }) {
           <TableBody>
             {filteredPrices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No prices found
                 </TableCell>
               </TableRow>
@@ -132,11 +112,6 @@ export function PricesTable({ initialPrices }) {
                         </span>
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStockBadgeVariant(price.stock_status)}>
-                      {getStockLabel(price.stock_status)}
-                    </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(price.updated_at)}

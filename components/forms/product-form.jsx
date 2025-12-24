@@ -26,6 +26,8 @@ export function ProductForm({ productId }) {
     slug: '',
     description: '',
     launch_year: new Date().getFullYear(),
+    main_image: '',
+    badge: '',
     is_active: true
   })
 
@@ -212,6 +214,31 @@ export function ProductForm({ productId }) {
               onChange={handleChange}
               min="2000"
               max="2099"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="main_image">Main Image URL</Label>
+            <Input
+              id="main_image"
+              name="main_image"
+              value={formData.main_image}
+              onChange={handleChange}
+              placeholder="https://example.com/image.jpg"
+            />
+            {formData.main_image && (
+              <img src={formData.main_image} alt="Preview" className="mt-2 h-32 w-auto object-contain border rounded" />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="badge">Badge</Label>
+            <Input
+              id="badge"
+              name="badge"
+              value={formData.badge}
+              onChange={handleChange}
+              placeholder="e.g., Best Choice, Editor's Pick"
             />
           </div>
 
