@@ -1,10 +1,7 @@
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { ToastProvider } from "@/components/ui/toast"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "Best Mobile Admin Panel",
@@ -14,7 +11,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className="font-sans antialiased">
         <ToastProvider>
           <div className="flex h-screen overflow-hidden">
             <Sidebar />
