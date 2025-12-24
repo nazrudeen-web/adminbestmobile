@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { X, Upload } from "lucide-react"
@@ -9,6 +9,11 @@ import Image from "next/image"
 export function ImageUpload({ bucket, value, onChange, className }) {
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState(value || null)
+
+  // Update preview when value prop changes
+  useEffect(() => {
+    setPreview(value || null)
+  }, [value])
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
@@ -49,16 +54,27 @@ export function ImageUpload({ bucket, value, onChange, className }) {
     onChange('')
   }
 
+  // Check if the URL is from Supabase Storage
+  const isSupabaseUrl = preview?.includes('supabase.co')
+
   return (
     <div className={className}>
       {preview ? (
         <div className="relative w-full h-48 border rounded-md overflow-hidden">
-          <Image
-            src={preview}
-            alt="Preview"
-            fill
-            className="object-cover"
-          />
+          {isSupabaseUrl ? (
+            <Image
+              src={preview}
+              alt="Preview"
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <img
+              src={preview}
+              alt="Preview"
+              className="w-full h-full object-cover"
+            />
+          )}
           <button
             type="button"
             onClick={handleRemove}

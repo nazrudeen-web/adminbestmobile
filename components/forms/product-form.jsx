@@ -26,7 +26,6 @@ export function ProductForm({ productId }) {
     slug: '',
     description: '',
     launch_year: new Date().getFullYear(),
-    main_image: '',
     badge: '',
     is_active: true
   })
@@ -98,6 +97,7 @@ export function ProductForm({ productId }) {
             slug: formData.slug,
             description: formData.description,
             launch_year: parseInt(formData.launch_year),
+            badge: formData.badge,
             is_active: formData.is_active,
             updated_at: new Date().toISOString()
           })
@@ -217,19 +217,24 @@ export function ProductForm({ productId }) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="main_image">Main Image URL</Label>
-            <Input
-              id="main_image"
-              name="main_image"
-              value={formData.main_image}
-              onChange={handleChange}
-              placeholder="https://example.com/image.jpg"
-            />
-            {formData.main_image && (
-              <img src={formData.main_image} alt="Preview" className="mt-2 h-32 w-auto object-contain border rounded" />
-            )}
-          </div>
+          {productId && (
+            <div className="space-y-2">
+              <Label>Product Images</Label>
+              <div className="border rounded-md p-4 bg-muted/50">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Manage product images on the dedicated images page
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/products/${productId}/images`)}
+                >
+                  Go to Images
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="badge">Badge</Label>

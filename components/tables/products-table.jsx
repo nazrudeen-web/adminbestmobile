@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 import { useToast } from "@/components/ui/toast"
 import { Edit, Trash2, Search, Image as ImageIcon, Palette, FileText, Star, Layers } from "lucide-react"
+import Image from "next/image"
 
 export function ProductsTable({ initialProducts }) {
   const router = useRouter()
@@ -79,6 +80,7 @@ export function ProductsTable({ initialProducts }) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Image</TableHead>
               <TableHead>Product</TableHead>
               <TableHead>Brand</TableHead>
               <TableHead>Year</TableHead>
@@ -90,13 +92,37 @@ export function ProductsTable({ initialProducts }) {
           <TableBody>
             {filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No products found
                 </TableCell>
               </TableRow>
             ) : (
               filteredProducts.map((product) => (
                 <TableRow key={product.id}>
+                  <TableCell>
+                    {product.main_image ? (
+                      product.main_image.includes('supabase.co') ? (
+                        <div className="relative w-10 h-10">
+                          <Image
+                            src={product.main_image}
+                            alt={product.name}
+                            fill
+                            className="object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <img
+                          src={product.main_image}
+                          alt={product.name}
+                          className="w-10 h-10 object-contain"
+                        />
+                      )
+                    ) : (
+                      <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-xs">
+                        No img
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {product.brands?.name || 'N/A'}
