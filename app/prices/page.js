@@ -9,7 +9,7 @@ async function getPrices() {
       *,
       products(id, name),
       product_variants(id, storage, color),
-      stores(id, name)
+      stores(id, name, is_official, is_authorized_seller)
     `)
     .order('updated_at', { ascending: false })
 

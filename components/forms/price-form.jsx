@@ -24,7 +24,6 @@ export function PriceForm({ priceId }) {
     variant_id: '',
     store_id: '',
     price: '',
-    old_price: '',
     affiliate_url: ''
   })
 
@@ -109,7 +108,6 @@ export function PriceForm({ priceId }) {
         variant_id: data.variant_id || '',
         store_id: data.store_id || '',
         price: data.price?.toString() || '',
-        old_price: data.old_price?.toString() || '',
         affiliate_url: data.affiliate_url || ''
       })
     } catch (error) {
@@ -139,7 +137,6 @@ export function PriceForm({ priceId }) {
         variant_id: formData.variant_id,
         store_id: formData.store_id,
         price: parseFloat(formData.price),
-        old_price: formData.old_price ? parseFloat(formData.old_price) : null,
         affiliate_url: formData.affiliate_url,
         updated_at: new Date().toISOString()
       }
@@ -252,33 +249,22 @@ export function PriceForm({ priceId }) {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="price">Price (AED) *</Label>
-              <Input
-                id="price"
-                name="price"
-                type="number"
-                step="0.01"
-                value={formData.price}
-                onChange={handleChange}
-                required
-                placeholder="e.g., 3999.00"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="old_price">Old Price (AED)</Label>
-              <Input
-                id="old_price"
-                name="old_price"
-                type="number"
-                step="0.01"
-                value={formData.old_price}
-                onChange={handleChange}
-                placeholder="e.g., 4499.00"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="price">Price (AED) *</Label>
+            <Input
+              id="price"
+              name="price"
+              type="number"
+              step="0.01"
+              value={formData.price}
+              onChange={handleChange}
+              required
+              placeholder="e.g., 3999.00"
+              className="text-lg font-semibold"
+            />
+            <p className="text-sm text-muted-foreground">
+              Current price for this product variant at this store
+            </p>
           </div>
 
           <div className="space-y-2">

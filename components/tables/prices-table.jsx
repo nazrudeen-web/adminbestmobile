@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 import { useToast } from "@/components/ui/toast"
@@ -81,6 +82,7 @@ export function PricesTable({ initialPrices }) {
               <TableHead>Product</TableHead>
               <TableHead>Variant</TableHead>
               <TableHead>Store</TableHead>
+              <TableHead>Store Type</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Updated</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -89,7 +91,7 @@ export function PricesTable({ initialPrices }) {
           <TableBody>
             {filteredPrices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No prices found
                 </TableCell>
               </TableRow>
@@ -104,14 +106,26 @@ export function PricesTable({ initialPrices }) {
                   </TableCell>
                   <TableCell>{price.stores?.name || 'N/A'}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-semibold">{formatPrice(price.price)}</span>
-                      {price.old_price && (
-                        <span className="text-xs text-muted-foreground line-through">
-                          {formatPrice(price.old_price)}
-                        </span>
+                    <div className="flex flex-wrap gap-1">
+                      {price.stores?.is_official && (
+                        <Badge className="bg-green-600 text-white">
+                          Official
+                        </Badge>
+                      )}
+                      {price.stores?.is_authorized_seller && (
+                        <Badge variant="secondary">
+                          Authorized
+                        </Badge>
+                      )}
+                      {!price.stores?.is_official && !price.stores?.is_authorized_seller && (
+                        <Badge variant="outline">
+                          Regular
+                        </Badge>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-semibold text-lg">{formatPrice(price.price)}</span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatDate(price.updated_at)}

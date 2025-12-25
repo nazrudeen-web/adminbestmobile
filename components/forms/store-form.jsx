@@ -11,25 +11,43 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ImageUpload } from "@/components/shared/image-upload"
 import { useToast } from "@/components/ui/toast"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
+import Image from "next/image"
 
 export function StoreForm({ storeId }) {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [fetchingData, setFetchingData] = useState(!!storeId)
+  const [brands, setBrands] = useState([])
   const [formData, setFormData] = useState({
     name: '',
     logo: '',
-    website_url: '',
     is_official: false,
+    is_authorized_seller: false,
     is_active: true
   })
 
   useEffect(() => {
+    fetchBrands()
     if (storeId) {
       fetchStore()
     }
   }, [storeId])
+
+  const fetchBrands = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('brands')
+        .select('id, name, logo')
+        .not('logo', 'is', null)
+        .order('name')
+
+      if (error) throw error
+      setBrands(data || [])
+    } catch (error) {
+      console.error('Error fetching brands:', error)
+    }
+  }
 
   const fetchStore = async () => {
     try {
@@ -125,28 +143,91 @@ export function StoreForm({ storeId }) {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-4">
             <Label>Store Logo</Label>
-            <ImageUpload
-              bucket="stores"
-              value={formData.logo}
-              onChange={(url) => setFormData(prev => ({ ...prev, logo: url }))}
-            />
+            
+            {/* Show current logo if exists */}
+            {formData.logo && (
+              <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/50">
+                <div className="relative w-16 h-16 flex-shrink-0">
+                  <Image
+                    src={formData.logo}
+                    alt="Store logo"
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Current Logo</p>
+                  <p className="text-xs text-muted-foreground truncate">{formData.logo}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFormData(prev => ({ ...prev, logo: '' }))}
+                >
+                  Remove
+                </Button>
+              </div>
+            )}
+
+            {/* Select from existing brand logos */}
+            {brands.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-px bg-border flex-1" />
+                  <span className="text-sm text-muted-foreground">Or select from brand logos</span>
+                  <div className="h-px bg-border flex-1" />
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
+                  {brands.map((brand) => (
+                    <button
+                      key={brand.id}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, logo: brand.logo }))}
+                      className={`relative aspect-square border-2 rounded-lg p-2 hover:border-primary transition-colors ${
+                        formData.logo === brand.logo ? 'border-primary bg-primary/5' : 'border-border'
+                      }`}
+                      title={brand.name}
+                    >
+                      <Image
+                        src={brand.logo}
+                        alt={brand.name}
+                        fill
+                        className="object-contain p-1"
+                      />
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  💡 Click on a brand logo to use it for this store
+                </p>
+              </div>
+            )}
+
+            {/* Upload custom logo */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-px bg-border flex-1" />
+                <span className="text-sm text-muted-foreground">Or upload custom logo</span>
+                <div className="h-px bg-border flex-1" />
+              </div>
+              <ImageUpload
+                bucket="stores"
+                value={formData.logo}
+                onChange={(url) => setFormData(prev => ({ ...prev, logo: url }))}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="website_url">Website URL</Label>
-            <Input
-              id="website_url"
-              name="website_url"
-              type="url"
-              value={formData.website_url}
-              onChange={handleChange}
-              placeholder="https://example.com"
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div className="space-y-0.5">
+              <Label className="text-base">Official Store</Label>
+              <p className="text-sm text-muted-foreground">
+                Mark if this is an official brand store (shows "Official Store" badge)
+              </p>
+            </div>
             <Switch
               id="is_official"
               checked={formData.is_official}
@@ -154,10 +235,31 @@ export function StoreForm({ storeId }) {
                 setFormData(prev => ({ ...prev, is_official: checked }))
               }
             />
-            <Label htmlFor="is_official">Official Store</Label>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div className="space-y-0.5">
+              <Label className="text-base">Authorized Seller</Label>
+              <p className="text-sm text-muted-foreground">
+                Mark if this is an authorized seller (shows "Authorized Seller" badge)
+              </p>
+            </div>
+            <Switch
+              id="is_authorized_seller"
+              checked={formData.is_authorized_seller}
+              onCheckedChange={(checked) => 
+                setFormData(prev => ({ ...prev, is_authorized_seller: checked }))
+              }
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div className="space-y-0.5">
+              <Label className="text-base">Active</Label>
+              <p className="text-sm text-muted-foreground">
+                Inactive stores won't appear in price comparisons
+              </p>
+            </div>
             <Switch
               id="is_active"
               checked={formData.is_active}
@@ -165,7 +267,6 @@ export function StoreForm({ storeId }) {
                 setFormData(prev => ({ ...prev, is_active: checked }))
               }
             />
-            <Label htmlFor="is_active">Active</Label>
           </div>
 
           <div className="flex gap-4">

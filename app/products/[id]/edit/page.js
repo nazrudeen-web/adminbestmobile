@@ -9,6 +9,7 @@ export default async function EditProductPage({ params }) {
       <PageHeader
         title="Edit Product"
         description="Update product information"
+        action={{ label: "Preview", href: `/products/${id}/preview`, icon: "eye" }}
       />
       <ProductForm productId={id} />
     </div>

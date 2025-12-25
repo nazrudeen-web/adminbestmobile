@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 import { useToast } from "@/components/ui/toast"
-import { Edit, Trash2, Search, Image as ImageIcon, Palette, FileText, Star, Layers } from "lucide-react"
+import { Edit, Trash2, Search, Image as ImageIcon, Palette, FileText, Star, Layers, Eye } from "lucide-react"
 import Image from "next/image"
 
 export function ProductsTable({ initialProducts }) {
@@ -140,6 +140,14 @@ export function ProductsTable({ initialProducts }) {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => router.push(`/products/${product.id}/preview`)}
+                        title="Preview Product"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

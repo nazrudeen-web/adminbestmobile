@@ -28,6 +28,14 @@ export default function KeySpecificationsPage({ params }) {
     sort_order: 0
   })
 
+  // Standard key specifications for all mobile phones (in display order)
+  const standardKeySpecs = [
+    { icon: 'display', title: 'Display', placeholder: 'e.g., 6.8" Dynamic AMOLED 2X, 1-120Hz adaptive', defaultValue: '' },
+    { icon: 'processor', title: 'Processor', placeholder: 'e.g., Snapdragon 8 Gen 3', defaultValue: '' },
+    { icon: 'camera', title: 'Camera', placeholder: 'e.g., 200MP (f/1.7) + 50MP (f/2.4) + 10MP (f/3.4) + 50MP telephoto | 12MP front', defaultValue: '' },
+    { icon: 'battery', title: 'Battery', placeholder: 'e.g., 5000 mAh, 45W fast charging', defaultValue: '' }
+  ]
+
   useEffect(() => {
     const unwrapParams = async () => {
       const unwrapped = await params
@@ -91,6 +99,61 @@ export default function KeySpecificationsPage({ params }) {
       toast({
         title: "Error",
         description: "Failed to add key specification",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleUpdate = async (id, value) => {
+    try {
+      const { error } = await supabase
+        .from('key_specifications')
+        .update({ value })
+        .eq('id', id)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Key specification updated successfully"
+      })
+      fetchData()
+    } catch (error) {
+      console.error('Error updating key spec:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update key specification",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const initializeStandardSpecs = async () => {
+    try {
+      const specsToInsert = standardKeySpecs.map((spec, index) => ({
+        product_id: productId,
+        icon: spec.icon,
+        title: spec.title,
+        value: spec.defaultValue,
+        sort_order: index
+      }))
+
+      const { error } = await supabase
+        .from('key_specifications')
+        .insert(specsToInsert)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Standard key specifications initialized (Display, Processor, Camera, Battery)"
+      })
+      fetchData()
+    } catch (error) {
+      console.error('Error initializing specs:', error)
+      toast({
+        title: "Error",
+        description: "Failed to initialize key specifications",
         variant: "destructive"
       })
     }
@@ -167,9 +230,98 @@ export default function KeySpecificationsPage({ params }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add Key Specification</CardTitle>
+          <CardTitle>Quick Setup - Standard 4 Key Specifications</CardTitle>
         </CardHeader>
         <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Initialize the standard 4 key specifications for this product. You can then fill in the values below.
+          </p>
+          <Button onClick={initializeStandardSpecs} disabled={keySpecs.length > 0}>
+            {keySpecs.length > 0 ? 'Already Initialized' : 'Initialize Standard Key Specs'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Key Specifications ({keySpecs.length}/4)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {keySpecs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No key specifications added yet. Click "Initialize Standard Key Specs" above to get started.
+            </div>
+          ) : (
+            keySpecs.map((spec, index) => {
+              const standardSpec = standardKeySpecs.find(s => s.icon === spec.icon) || {}
+              return (
+                <div key={spec.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-mono bg-muted px-2 py-1 rounded">{spec.icon}</span>
+                      <h3 className="font-semibold text-lg">{spec.title}</h3>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => moveUp(index)}
+                        disabled={index === 0}
+                        title="Move up"
+                      >
+                        <MoveUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => moveDown(index)}
+                        disabled={index === keySpecs.length - 1}
+                        title="Move down"
+                      >
+                        <MoveDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteId(spec.id)}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`value-${spec.id}`}>Value *</Label>
+                    <Input
+                      id={`value-${spec.id}`}
+                      defaultValue={spec.value}
+                      onBlur={(e) => {
+                        if (e.target.value !== spec.value) {
+                          handleUpdate(spec.id, e.target.value)
+                        }
+                      }}
+                      placeholder={standardSpec.placeholder || 'Enter specification value'}
+                      className="font-medium"
+                    />
+                    {standardSpec.placeholder && (
+                      <p className="text-xs text-muted-foreground">{standardSpec.placeholder}</p>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add Custom Key Specification</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Add additional key specifications beyond the standard 4 if needed.
+          </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -179,7 +331,7 @@ export default function KeySpecificationsPage({ params }) {
                   value={formData.icon}
                   onChange={(e) => setFormData(prev => ({ ...prev, icon: e.target.value }))}
                   required
-                  placeholder="e.g., display, processor, storage, battery"
+                  placeholder="e.g., storage, ram, screen"
                 />
                 <p className="text-xs text-muted-foreground">Icon identifier for frontend display</p>
               </div>
@@ -191,7 +343,7 @@ export default function KeySpecificationsPage({ params }) {
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   required
-                  placeholder="e.g., Display, Processor"
+                  placeholder="e.g., Storage, RAM"
                 />
               </div>
             </div>
@@ -203,76 +355,12 @@ export default function KeySpecificationsPage({ params }) {
                 value={formData.value}
                 onChange={(e) => setFormData(prev => ({ ...prev, value: e.target.value }))}
                 required
-                placeholder="e.g., 6.3&quot; OLED, Google Tensor G4"
+                placeholder="e.g., 256GB, 12GB"
               />
             </div>
 
-            <Button type="submit">Add Key Specification</Button>
+            <Button type="submit">Add Custom Specification</Button>
           </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Existing Key Specifications ({keySpecs.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-20">Order</TableHead>
-                <TableHead>Icon</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keySpecs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No key specifications added yet
-                  </TableCell>
-                </TableRow>
-              ) : (
-                keySpecs.map((spec, index) => (
-                  <TableRow key={spec.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell className="font-mono text-sm">{spec.icon}</TableCell>
-                    <TableCell>{spec.title}</TableCell>
-                    <TableCell>{spec.value}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => moveUp(index)}
-                          disabled={index === 0}
-                        >
-                          <MoveUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => moveDown(index)}
-                          disabled={index === keySpecs.length - 1}
-                        >
-                          <MoveDown className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteId(spec.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
         </CardContent>
       </Card>
 

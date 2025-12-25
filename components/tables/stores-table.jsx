@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 import { useToast } from "@/components/ui/toast"
-import { Edit, Trash2, Search, ExternalLink } from "lucide-react"
+import { Edit, Trash2, Search } from "lucide-react"
 import Image from "next/image"
 
 export function StoresTable({ initialStores }) {
@@ -81,7 +81,6 @@ export function StoresTable({ initialStores }) {
             <TableRow>
               <TableHead>Logo</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Website</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created</TableHead>
@@ -91,7 +90,7 @@ export function StoresTable({ initialStores }) {
           <TableBody>
             {filteredStores.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No stores found
                 </TableCell>
               </TableRow>
@@ -116,23 +115,23 @@ export function StoresTable({ initialStores }) {
                   </TableCell>
                   <TableCell className="font-medium">{store.name}</TableCell>
                   <TableCell>
-                    {store.website_url ? (
-                      <a 
-                        href={store.website_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-primary hover:underline"
-                      >
-                        Visit <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ) : (
-                      <span className="text-muted-foreground">N/A</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={store.is_official ? "default" : "secondary"}>
-                      {store.is_official ? "Official" : "Partner"}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {store.is_official && (
+                        <Badge variant="default" className="bg-green-600">
+                          Official Store
+                        </Badge>
+                      )}
+                      {store.is_authorized_seller && (
+                        <Badge variant="secondary">
+                          Authorized Seller
+                        </Badge>
+                      )}
+                      {!store.is_official && !store.is_authorized_seller && (
+                        <Badge variant="outline">
+                          Regular Store
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge variant={store.is_active ? "default" : "secondary"}>
