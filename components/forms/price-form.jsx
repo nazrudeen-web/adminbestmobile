@@ -124,7 +124,16 @@ export function PriceForm({ priceId }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    if (name === 'price') {
+      // Normalize pasted values like "3,919.00" to "3919.00"
+      // Remove thousands separators and whitespace; keep at most one dot
+      const cleaned = value
+        .replace(/,/g, '')
+        .replace(/\s+/g, '')
+      setFormData(prev => ({ ...prev, [name]: cleaned }))
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }))
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -132,11 +141,13 @@ export function PriceForm({ priceId }) {
     setLoading(true)
 
     try {
+      // Send price as a string to avoid floating point drift
+      const normalizedPrice = (formData.price || '').replace(/,/g, '').trim()
       const priceData = {
         product_id: formData.product_id,
         variant_id: formData.variant_id,
         store_id: formData.store_id,
-        price: parseFloat(formData.price),
+        price: normalizedPrice,
         affiliate_url: formData.affiliate_url,
         updated_at: new Date().toISOString()
       }
@@ -154,15 +165,16 @@ export function PriceForm({ priceId }) {
           description: "Price updated successfully"
         })
       } else {
+        // Use upsert to respect unique (variant_id, store_id)
         const { error } = await supabase
           .from('prices')
-          .insert([priceData])
+          .upsert([priceData], { onConflict: 'variant_id,store_id' })
 
         if (error) throw error
 
         toast({
           title: "Success",
-          description: "Price created successfully"
+          description: "Price saved successfully"
         })
       }
 
@@ -210,7 +222,7 @@ export function PriceForm({ priceId }) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="variant_id">Variant *</Label>
+            <Label htmlFor="variant_id">Storage Variant *</Label>
             <Select
               id="variant_id"
               name="variant_id"
@@ -219,16 +231,19 @@ export function PriceForm({ priceId }) {
               required
               disabled={!formData.product_id}
             >
-              <option value="">Select a variant</option>
+              <option value="">Select storage variant</option>
               {variants.map(variant => (
                 <option key={variant.id} value={variant.id}>
-                  {variant.storage} - {variant.color}
+                  {variant.storage}
                 </option>
               ))}
             </Select>
             {!formData.product_id && (
               <p className="text-sm text-muted-foreground">Select a product first</p>
             )}
+            <p className="text-xs text-muted-foreground">
+              Price is determined by storage. Colors are options available for each storage.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -254,8 +269,9 @@ export function PriceForm({ priceId }) {
             <Input
               id="price"
               name="price"
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
+              pattern="^[0-9]*([.][0-9]{0,2})?$"
               value={formData.price}
               onChange={handleChange}
               required

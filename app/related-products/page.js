@@ -3,21 +3,36 @@ import { PageHeader } from "@/components/layout/page-header"
 import { RelatedProductsTable } from "@/components/tables/related-products-table"
 
 async function getRelatedProducts() {
-  const { data, error } = await supabase
-    .from('related_products')
-    .select(`
-      *,
-      product:product_id(id, name, brands(name)),
-      related_product:related_product_id(id, name, brands(name), best_price)
-    `)
-    .order('created_at', { ascending: false })
+  try {
+    const { data, error } = await supabase
+      .from('related_products')
+      .select(`
+        *,
+        product:product_id(id, name, brands(name)),
+        related_product:related_product_id(id, name, brands(name))
+      `)
+      .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching related products:', error)
+    if (error) {
+      console.error('Error fetching related products:', error)
+      // Fallback: return base rows if relational selection fails
+      const fallback = await supabase
+        .from('related_products')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (fallback.error) {
+        console.error('Fallback related products fetch failed:', fallback.error)
+        return []
+      }
+      return fallback.data || []
+    }
+
+    return data || []
+  } catch (e) {
+    console.error('Error fetching related products (exception):', e)
     return []
   }
-
-  return data
 }
 
 export default async function RelatedProductsPage() {

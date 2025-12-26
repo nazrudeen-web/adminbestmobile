@@ -261,11 +261,18 @@ cp .env.local.example .env.local
 2. Update `.env.local` with your Supabase credentials:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+
+# Server-only (required for deleting files from Storage)
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 ```
 
-You can find these values in your Supabase project settings under API.
+You can find these values in Supabase → Project Settings → API.
+
+Notes:
+- `SUPABASE_SERVICE_ROLE_KEY` must only be used on the server. Our delete API route uses it server-side to remove files from Storage; it is never exposed to the client.
+- After editing `.env.local`, restart the dev server so changes take effect.
 
 ### 5. Run the Development Server
 

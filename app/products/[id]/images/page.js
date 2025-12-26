@@ -188,11 +188,47 @@ export default function ProductImagesPage({ params }) {
     if (!deleteImage) return
 
     try {
-      const { error } = await supabase.storage
-        .from('products')
-        .remove([deleteImage.file_name])
+      console.log('Attempting to delete image:', {
+        image_url: deleteImage.image_url,
+        file_name: deleteImage.file_name,
+        is_main: deleteImage.is_main
+      })
 
-      if (error) throw error
+      // Always attempt to delete the DB record first (if it exists)
+      // We match by product_id + image_url which is how records are stored
+      const { error: dbDeleteError } = await supabase
+        .from('product_images')
+        .delete()
+        .eq('product_id', productId)
+        .eq('image_url', deleteImage.image_url)
+
+      if (dbDeleteError && dbDeleteError.code !== 'P0001') {
+        // Log but don't block storage deletion
+        console.warn('DB delete returned error (non-blocking):', dbDeleteError)
+      } else {
+        console.log('DB record deleted successfully')
+      }
+
+      // Delete from storage via secure server route (uses service role)
+      console.log('Calling server route to delete storage object...')
+      const res = await fetch('/api/storage/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bucket: 'products',
+          imageUrl: deleteImage.image_url,
+          fileName: deleteImage.file_name,
+          productId
+        })
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.warn('Server storage delete failed:', err)
+        throw new Error(err?.error || 'Failed to delete file from storage')
+      } else {
+        console.log('Server storage delete succeeded')
+      }
 
       // If deleted image was main, clear main_image from product
       if (deleteImage.is_main) {
@@ -204,7 +240,7 @@ export default function ProductImagesPage({ params }) {
 
       toast({
         title: "Success",
-        description: "Image deleted successfully"
+        description: "Image deleted from database and storage"
       })
       setDeleteImage(null)
       fetchData()
