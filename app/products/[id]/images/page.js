@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ImageUpload } from "@/components/shared/image-upload"
 import { useToast } from "@/components/ui/toast"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
-import { Trash2, Star, StarOff } from "lucide-react"
+import { Trash2, Star, StarOff, Save, ArrowUp, ArrowDown } from "lucide-react"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
+import { Input } from "@/components/ui/input"
 import Image from "next/image"
 
 export default function ProductImagesPage({ params }) {
@@ -22,6 +23,8 @@ export default function ProductImagesPage({ params }) {
   const [uploading, setUploading] = useState(false)
   const [deleteImage, setDeleteImage] = useState(null)
   const [uploadKey, setUploadKey] = useState(0)
+  const [editingImage, setEditingImage] = useState(null)
+  const [sortOrderValue, setSortOrderValue] = useState('')
 
   useEffect(() => {
     const unwrapParams = async () => {
@@ -62,6 +65,7 @@ export default function ProductImagesPage({ params }) {
             image_url: img.image_url,
             file_name: img.image_url.split('/').pop(),
             is_main: productRes.data.main_image === img.image_url,
+            sort_order: img.sort_order || 0,
             created_at: img.created_at,
             in_database: true
           })
@@ -254,6 +258,81 @@ export default function ProductImagesPage({ params }) {
     }
   }
 
+  const handleUpdateSortOrder = async (imageId, newSortOrder) => {
+    try {
+      const { error } = await supabase
+        .from('product_images')
+        .update({ sort_order: parseInt(newSortOrder) })
+        .eq('id', imageId)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Sort order updated"
+      })
+      
+      setEditingImage(null)
+      setSortOrderValue('')
+      fetchData()
+    } catch (error) {
+      console.error('Error updating sort order:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update sort order",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleToggleMainImage = async (image) => {
+    try {
+      // Update the main_image in products table
+      await supabase
+        .from('products')
+        .update({ main_image: image.image_url })
+        .eq('id', productId)
+
+      // Update is_main flag in product_images table
+      // First set all to false
+      await supabase
+        .from('product_images')
+        .update({ is_main: false })
+        .eq('product_id', productId)
+
+      // Then set the selected one to true (if it exists in DB)
+      if (image.in_database) {
+        await supabase
+          .from('product_images')
+          .update({ is_main: true })
+          .eq('id', image.id)
+      }
+
+      toast({
+        title: "Success",
+        description: "Main image updated"
+      })
+      
+      fetchData()
+    } catch (error) {
+      console.error('Error updating main image:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update main image",
+        variant: "destructive"
+      })
+    }
+  }
+
+  const handleMoveSortOrder = async (image, direction) => {
+    const currentOrder = image.sort_order || 0
+    const newOrder = direction === 'up' ? currentOrder - 1 : currentOrder + 1
+    
+    if (newOrder < 0) return
+    
+    handleUpdateSortOrder(image.id, newOrder)
+  }
+
   if (loading) return <LoadingSpinner />
 
   return (
@@ -321,33 +400,94 @@ export default function ProductImagesPage({ params }) {
                     )}
                   </div>
                   
-                  <div className="flex items-center justify-between gap-2">
+                  {/* Main Image Toggle */}
+                  <div className="mb-2">
                     {image.is_main ? (
-                      <span className="flex items-center gap-1 text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
+                      <span className="flex items-center gap-1 text-xs bg-primary text-primary-foreground px-2 py-1 rounded w-full justify-center">
                         <Star className="h-3 w-3 fill-current" />
-                        Main
+                        Main Image
                       </span>
                     ) : (
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-xs h-7"
-                        onClick={() => handleSetMainImage(image.image_url)}
+                        className="text-xs h-7 w-full"
+                        onClick={() => handleToggleMainImage(image)}
+                        disabled={!image.in_database}
                       >
                         <StarOff className="h-3 w-3 mr-1" />
-                        Set Main
+                        Set as Main
                       </Button>
                     )}
-                    
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => setDeleteImage(image)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
                   </div>
+
+                  {/* Sort Order Controls */}
+                  {image.in_database && (
+                    <div className="mb-2 space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">Order:</span>
+                        {editingImage === image.id ? (
+                          <div className="flex gap-1 flex-1">
+                            <Input
+                              type="number"
+                              className="h-6 text-xs"
+                              value={sortOrderValue}
+                              onChange={(e) => setSortOrderValue(e.target.value)}
+                              min="0"
+                            />
+                            <Button
+                              size="sm"
+                              className="h-6 px-2"
+                              onClick={() => handleUpdateSortOrder(image.id, sortOrderValue)}
+                            >
+                              <Save className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 flex-1">
+                            <span 
+                              className="text-xs font-medium cursor-pointer hover:text-primary"
+                              onClick={() => {
+                                setEditingImage(image.id)
+                                setSortOrderValue(image.sort_order || 0)
+                              }}
+                            >
+                              {image.sort_order || 0}
+                            </span>
+                            <div className="flex gap-0.5 ml-auto">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0"
+                                onClick={() => handleMoveSortOrder(image, 'up')}
+                              >
+                                <ArrowUp className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0"
+                                onClick={() => handleMoveSortOrder(image, 'down')}
+                              >
+                                <ArrowDown className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Delete Button */}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-7 w-full"
+                    onClick={() => setDeleteImage(image)}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Delete
+                  </Button>
                   
                   <p className="text-xs text-muted-foreground mt-2 truncate" title={image.file_name}>
                     {image.file_name}

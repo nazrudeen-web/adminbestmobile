@@ -325,15 +325,15 @@ export default function ProductVariantsPage({ params }) {
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 relative z-50 isolate">
                   <Label htmlFor="color_hex">Color Code (Optional)</Label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 relative z-50">
                     <input
                       id="color_hex"
                       type="color"
                       value={colorFormData.color_hex}
                       onChange={(e) => setColorFormData(prev => ({ ...prev, color_hex: e.target.value }))}
-                      className="h-10 w-12 rounded border cursor-pointer"
+                      className="h-10 w-16 rounded border cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-primary relative z-50 self-start"
                     />
                     <Input
                       type="text"
@@ -342,6 +342,19 @@ export default function ProductVariantsPage({ params }) {
                       placeholder="#000000"
                       className="flex-1"
                     />
+                  </div>
+                  {/* Quick swatches for easier selection */}
+                  <div className="flex flex-wrap gap-2 pt-1 relative z-50">
+                    {['#000000','#FFFFFF','#FF0000','#00A3FF','#22C55E','#F59E0B','#7C3AED','#6B7280'].map(sw => (
+                      <button
+                        key={sw}
+                        type="button"
+                        title={sw}
+                        className="h-7 w-7 rounded-full border shadow-sm hover:scale-105 transition"
+                        style={{ backgroundColor: sw }}
+                        onClick={() => setColorFormData(prev => ({ ...prev, color_hex: sw }))}
+                      />
+                    ))}
                   </div>
                 </div>
 
@@ -358,7 +371,7 @@ export default function ProductVariantsPage({ params }) {
                       Go to Images
                     </Button>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 border rounded-md p-3 max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-3 gap-2 border rounded-md p-3 max-h-48 overflow-y-auto relative z-10">
                     {productImages.length === 0 ? (
                       <p className="col-span-3 text-center text-muted-foreground text-xs">
                         No images. Upload in Product Images first.

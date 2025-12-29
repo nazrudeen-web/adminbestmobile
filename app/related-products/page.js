@@ -11,7 +11,7 @@ async function getRelatedProducts() {
         product:product_id(id, name, brands(name)),
         related_product:related_product_id(id, name, brands(name))
       `)
-      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
 
     if (error) {
       console.error('Error fetching related products:', error)
@@ -19,7 +19,7 @@ async function getRelatedProducts() {
       const fallback = await supabase
         .from('related_products')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
 
       if (fallback.error) {
         console.error('Fallback related products fetch failed:', fallback.error)
