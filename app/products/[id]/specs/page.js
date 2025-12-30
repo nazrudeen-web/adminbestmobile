@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/components/ui/toast"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
-import { Trash2 } from "lucide-react"
+import { Trash2, Edit2, Save, X } from "lucide-react"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 
 export default function ProductSpecsPage({ params }) {
@@ -21,6 +21,9 @@ export default function ProductSpecsPage({ params }) {
   const [specs, setSpecs] = useState([])
   const [loading, setLoading] = useState(true)
   const [deleteId, setDeleteId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editData, setEditData] = useState({})
+  const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     spec_group: '',
     spec_name: '',
@@ -96,6 +99,45 @@ export default function ProductSpecsPage({ params }) {
     }
   }
 
+  const startEdit = (spec) => {
+    setEditingId(spec.id)
+    setEditData({
+      spec_group: spec.spec_group,
+      spec_name: spec.spec_name,
+      spec_value: spec.spec_value,
+      sort_order: spec.sort_order
+    })
+  }
+
+  const handleSaveEdit = async (specId) => {
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('specifications')
+        .update(editData)
+        .eq('id', specId)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Specification updated successfully"
+      })
+
+      setEditingId(null)
+      fetchData()
+    } catch (error) {
+      console.error('Error updating specification:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update specification",
+        variant: "destructive"
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleDelete = async () => {
     try {
       const { error } = await supabase
@@ -140,6 +182,7 @@ export default function ProductSpecsPage({ params }) {
         </p>
       </div>
 
+      {/* Add New Specification */}
       <Card>
         <CardHeader>
           <CardTitle>Add New Specification</CardTitle>
@@ -149,13 +192,22 @@ export default function ProductSpecsPage({ params }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="spec_group">Group *</Label>
-                <Input
+                <select
                   id="spec_group"
                   value={formData.spec_group}
                   onChange={(e) => setFormData(prev => ({ ...prev, spec_group: e.target.value }))}
                   required
-                  placeholder="e.g., Display, Camera"
-                />
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="">Select Category</option>
+                  <option value="Display">Display</option>
+                  <option value="Performance">Performance</option>
+                  <option value="Camera">Camera</option>
+                  <option value="Battery">Battery</option>
+                  <option value="Connectivity">Connectivity</option>
+                  <option value="Design">Design</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
 
               <div className="space-y-2">
@@ -196,6 +248,7 @@ export default function ProductSpecsPage({ params }) {
         </CardContent>
       </Card>
 
+      {/* Display Specifications */}
       <div className="space-y-4">
         {Object.keys(groupedSpecs).length === 0 ? (
           <Card>
@@ -207,35 +260,119 @@ export default function ProductSpecsPage({ params }) {
           Object.entries(groupedSpecs).map(([group, groupSpecs]) => (
             <Card key={group}>
               <CardHeader>
-                <CardTitle>{group}</CardTitle>
+                <CardTitle className="text-lg">{group} ({groupSpecs.length})</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Value</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {groupSpecs.map((spec) => (
-                      <TableRow key={spec.id}>
-                        <TableCell className="font-medium">{spec.spec_name}</TableCell>
-                        <TableCell>{spec.spec_value}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteId(spec.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="space-y-3">
+                  {groupSpecs.map((spec) => (
+                    <div key={spec.id} className="border rounded-lg p-4 space-y-3">
+                      {/* Edit Mode */}
+                      {editingId === spec.id ? (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                              Specification Name
+                            </label>
+                            <Input
+                              value={editData.spec_name}
+                              onChange={(e) => setEditData(prev => ({ ...prev, spec_name: e.target.value }))}
+                              placeholder="e.g., Screen Size"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                              Specification Value
+                            </label>
+                            <Input
+                              value={editData.spec_value}
+                              onChange={(e) => setEditData(prev => ({ ...prev, spec_value: e.target.value }))}
+                              placeholder="e.g., 6.7 inches"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                                Category
+                              </label>
+                              <select
+                                value={editData.spec_group}
+                                onChange={(e) => setEditData(prev => ({ ...prev, spec_group: e.target.value }))}
+                                className="w-full px-3 py-2 text-sm border rounded-md"
+                              >
+                                <option value="Display">Display</option>
+                                <option value="Performance">Performance</option>
+                                <option value="Camera">Camera</option>
+                                <option value="Battery">Battery</option>
+                                <option value="Connectivity">Connectivity</option>
+                                <option value="Design">Design</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="text-xs font-semibold text-muted-foreground block mb-1">
+                                Sort Order
+                              </label>
+                              <Input
+                                type="number"
+                                value={editData.sort_order}
+                                onChange={(e) => setEditData(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveEdit(spec.id)}
+                              disabled={saving}
+                              className="flex-1"
+                            >
+                              <Save className="h-4 w-4 mr-2" />
+                              {saving ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingId(null)}
+                            >
+                              <X className="h-4 w-4" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* View Mode */
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm">{spec.spec_name}</p>
+                            <p className="text-sm text-muted-foreground">{spec.spec_value}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => startEdit(spec)}
+                              title="Edit specification"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteId(spec.id)}
+                              title="Delete specification"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           ))

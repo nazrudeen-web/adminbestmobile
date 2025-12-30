@@ -2,7 +2,9 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Plus } from "lucide-react"
 
-export function PageHeader({ title, description, action }) {
+export function PageHeader({ title, description, action, actions }) {
+  const actionList = actions || (action ? [action] : [])
+  
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border/50 mb-6">
       <div className="space-y-1">
@@ -11,13 +13,17 @@ export function PageHeader({ title, description, action }) {
           <p className="text-muted-foreground text-sm sm:text-base">{description}</p>
         )}
       </div>
-      {action && (
-        <Link href={action.href}>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            {action.label}
-          </Button>
-        </Link>
+      {actionList.length > 0 && (
+        <div className="flex gap-2">
+          {actionList.map((btn, idx) => (
+            <Link key={idx} href={btn.href}>
+              <Button variant={btn.variant || 'default'} className="gap-2">
+                <Plus className="h-4 w-4" />
+                {btn.label}
+              </Button>
+            </Link>
+          ))}
+        </div>
       )}
     </div>
   )

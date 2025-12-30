@@ -9,8 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@supabase/supabase-js": "^2.89.0",
+    "axios": "^1.13.2",
+    "cheerio": "^1.1.2",
     "clsx": "^2.1.1",
+    "groq": "^5.1.0",
+    "groq-sdk": "^0.37.0",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
     "react": "19.2.3",

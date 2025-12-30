@@ -61,7 +61,17 @@ export function ProductForm({ productId }) {
         .single()
 
       if (error) throw error
-      setFormData(data)
+      
+      // Ensure all string fields have values (not null/undefined)
+      setFormData({
+        brand_id: data.brand_id || '',
+        name: data.name || '',
+        slug: data.slug || '',
+        description: data.description || '',
+        launch_year: data.launch_year || new Date().getFullYear(),
+        badge: data.badge || '',
+        is_active: data.is_active ?? true
+      })
     } catch (error) {
       console.error('Error fetching product:', error)
       toast({

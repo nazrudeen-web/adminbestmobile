@@ -24,7 +24,10 @@ export default async function ProductsPage() {
       <PageHeader
         title="Products"
         description="Manage mobile phone products"
-        action={{ label: "Add Product", href: "/products/new" }}
+        actions={[
+          { label: "Import from GSMArena", href: "/products/import", variant: "outline" },
+          { label: "Add Product", href: "/products/new" }
+        ]}
       />
       <ProductsTable initialProducts={products} />
     </div>

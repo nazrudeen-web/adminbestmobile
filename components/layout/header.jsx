@@ -1,10 +1,13 @@
 'use client'
 
-import { Bell, Search, User } from "lucide-react"
+import { useState } from "react"
+import { Bell, Search, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AiSheet } from "@/components/shared/ai-sheet"
 
 export function Header() {
+  const [aiOpen, setAiOpen] = useState(false)
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -31,6 +34,17 @@ export function Header() {
           />
         </div>
 
+        {/* AI Assistant Button */}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-9 w-9 rounded-lg text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+          onClick={() => setAiOpen(true)}
+          title="Open AI Assistant"
+        >
+          <Zap className="h-5 w-5" />
+        </Button>
+
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-lg">
           <Bell className="h-5 w-5 text-muted-foreground" />
@@ -50,6 +64,9 @@ export function Header() {
           </div>
         </div>
       </div>
+
+      {/* AI Sheet Modal */}
+      <AiSheet isOpen={aiOpen} onClose={() => setAiOpen(false)} />
     </header>
   )
 }
