@@ -19,55 +19,38 @@ export async function POST(request) {
     // Prepare the prompt
     const dataString = JSON.stringify(phoneData, null, 2)
     
-    const prompt = `You are a mobile phone specification analyzer. Complete and improve this phone's specs.
+    const prompt = `You are a mobile phone specification reformatter. Process this phone data:
 
-PHONE DATA:
 ${dataString}
 
-YOUR TASK:
-1. Identify phone tier (Budget/Mid-range/Flagship) based on processor and display
-2. Fill missing specs with INTELLIGENT ESTIMATES based on tier:
-   - Budget (Snapdragon 6-7): ~50MP main, ~5MP front, ~5000mAh
-   - Mid-range (Snapdragon 8 Gen 1-2): ~50-108MP main, ~12-20MP front, ~5000-5500mAh
-   - Flagship (A-series/SD 8 Gen 3): ~48-200MP main, ~12MP front, ~4000-5000mAh
+TASK:
+1. Keep ALL specifications from input
+2. Only add missing critical specs: Battery Capacity, Processor, RAM, Storage
+3. Clean up and standardize the format
+4. Output ONLY valid JSON
 
-3. For Camera - ALWAYS estimate if missing:
-   - Look at processor tier to guess main camera MP
-   - Mid-range typically has: 50MP main + 2MP macro/depth, 12-16MP front
-   - Add common features: f/1.7-1.8 aperture, OIS if flagship, 4K video
-
-4. For Battery - ALWAYS estimate if missing:
-   - Budget/Mid-range: 5000-5500mAh
-   - Flagship: 4000-4500mAh
-   - Use charging speed to verify (45W = mid-range, 65W+ = flagship)
-
-5. Format specs EXACTLY like examples:
-   Camera: "50 MP main (f/1.7) + 2 MP macro; 16 MP front, 1080p video"
-   Battery: "5000 mAh, 45W fast charging, 0-100% in 30min"
-   Display: "6.41" AMOLED, 385 ppi, 90Hz"
-   Processor: "Snapdragon 6 Gen 3, Octa-core"
-
-RETURN ONLY VALID JSON (no markdown, no code blocks):
+Output format:
 {
-  "name": "[exact phone model]",
-  "keySpecifications": [
-    {"title": "Display", "value": "[formatted]"},
-    {"title": "Camera", "value": "[formatted, estimated if needed]"},
-    {"title": "Processor", "value": "[formatted]"},
-    {"title": "Battery", "value": "[formatted, estimated if needed]"}
-  ],
+  "name": "phone model",
   "specifications": [
-    {"spec_group": "Display", "spec_name": "Display", "spec_value": "[value]"},
-    {"spec_group": "Camera", "spec_name": "Front Camera", "spec_value": "[estimated if missing]"},
-    {"spec_group": "Camera", "spec_name": "Back Camera", "spec_value": "[estimated if missing]"},
-    {"spec_group": "Performance", "spec_name": "Processor", "spec_value": "[value]"},
-    {"spec_group": "Performance", "spec_name": "RAM", "spec_value": "[value or estimate]"},
-    {"spec_group": "Storage", "spec_name": "Storage", "spec_value": "[value or estimate]"},
-    {"spec_group": "Battery", "spec_name": "Battery Capacity", "spec_value": "[value or estimate]"},
-    {"spec_group": "Battery", "spec_name": "Charging", "spec_value": "[value]"}
+    {"spec_group": "Display", "spec_name": "Display Type", "spec_value": "Super AMOLED, 120Hz..."},
+    {"spec_group": "Display", "spec_name": "Display Size", "spec_value": "6.7 inches..."},
+    ... ALL OTHER SPECS FROM INPUT ...
   ],
-  "notes": "Camera/Battery estimated based on [processor/tier]. User should verify."
-}`
+  "keySpecifications": [
+    {"title": "Display", "value": "..."},
+    {"title": "Camera", "value": "..."},
+    {"title": "Processor", "value": "..."},
+    {"title": "Battery", "value": "..."}
+  ]
+}
+
+RULES:
+- Valid JSON only
+- Escape all quotes in values
+- Keep original spec names and groups
+- No markdown, no explanations
+- Start with { and end with }`
 
     const response = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
@@ -77,23 +60,66 @@ RETURN ONLY VALID JSON (no markdown, no code blocks):
           content: prompt
         }
       ],
-      max_tokens: 2048,
-      temperature: 0.3 // Lower temperature for more consistent formatting
+      max_tokens: 3000,
+      temperature: 0.1 // Very low temperature for consistent JSON output
     })
 
     let reformattedData
     try {
       const responseText = response.choices[0].message.content
-      // Try to extract JSON from the response
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) {
-        throw new Error('No JSON found in response')
+      
+      // Remove markdown code blocks if present
+      let jsonString = responseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      
+      // Try direct parsing first
+      try {
+        reformattedData = JSON.parse(jsonString)
+      } catch (e1) {
+        // If that fails, try to extract and rebuild the JSON more carefully
+        // Remove any text before the first { and after the last }
+        const firstBrace = jsonString.indexOf('{')
+        const lastBrace = jsonString.lastIndexOf('}')
+        
+        if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+          throw new Error('Could not find JSON object in response')
+        }
+        
+        jsonString = jsonString.substring(firstBrace, lastBrace + 1)
+        
+        // Try parsing again
+        try {
+          reformattedData = JSON.parse(jsonString)
+        } catch (e2) {
+          // Last resort: try to fix common formatting issues
+          // Fix: unescaped newlines in strings
+          jsonString = jsonString.replace(/"\s*:\s*"([^"]*)[\r\n]+([^"]*)"/g, (match, p1, p2) => {
+            return `": "${p1.trim()} ${p2.trim()}"`
+          })
+          
+          // Fix: missing commas between array elements
+          jsonString = jsonString.replace(/}\s*{/g, '}, {')
+          jsonString = jsonString.replace(/}\s*]/g, '}]')
+          
+          reformattedData = JSON.parse(jsonString)
+        }
       }
-      reformattedData = JSON.parse(jsonMatch[0])
     } catch (parseError) {
-      console.error('JSON Parse Error:', parseError)
+      console.error('JSON Parse Error:', parseError.message)
+      console.error('Response text length:', response.choices[0].message.content.length)
+      console.error('Response text (first 300 chars):', response.choices[0].message.content.substring(0, 300))
+      console.error('Response text (last 300 chars):', response.choices[0].message.content.slice(-300))
+      
+      // Return a more helpful error with context
       return NextResponse.json(
-        { success: false, error: 'Failed to parse AI response' },
+        { 
+          success: false, 
+          error: 'Failed to parse AI response: ' + parseError.message,
+          debug: {
+            textLength: response.choices[0].message.content.length,
+            hasOpenBrace: response.choices[0].message.content.includes('{'),
+            hasCloseBrace: response.choices[0].message.content.includes('}')
+          }
+        },
         { status: 500 }
       )
     }

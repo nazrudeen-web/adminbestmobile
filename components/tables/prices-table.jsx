@@ -34,7 +34,7 @@ export function PricesTable({ initialPrices }) {
   const [selectedProduct, setSelectedProduct] = useState('')
   const [selectedStore, setSelectedStore] = useState('')
   const [selectedStoreType, setSelectedStoreType] = useState('')
-  const [viewMode, setViewMode] = useState('table') // 'table' or 'grouped'
+  const [viewMode, setViewMode] = useState('grouped') // 'table' or 'grouped' - DEFAULT: grouped
   const [expandedProducts, setExpandedProducts] = useState(new Set())
   
   // Pagination states

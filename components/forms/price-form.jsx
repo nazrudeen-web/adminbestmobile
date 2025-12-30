@@ -141,6 +141,17 @@ export function PriceForm({ priceId }) {
     setLoading(true)
 
     try {
+      // Validate required fields
+      if (!formData.product_id || !formData.variant_id || !formData.store_id || !formData.price) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive"
+        })
+        setLoading(false)
+        return
+      }
+
       // Send price as a string to avoid floating point drift
       const normalizedPrice = (formData.price || '').replace(/,/g, '').trim()
       const priceData = {
@@ -151,6 +162,8 @@ export function PriceForm({ priceId }) {
         affiliate_url: formData.affiliate_url,
         updated_at: new Date().toISOString()
       }
+
+      console.log('Saving price with data:', priceData)
 
       if (priceId) {
         const { error } = await supabase

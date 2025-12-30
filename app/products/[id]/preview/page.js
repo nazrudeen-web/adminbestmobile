@@ -36,17 +36,43 @@ export default function ProductPreviewPage({ params }) {
   const fetchProductData = async () => {
     try {
       // Fetch product with all related data
-      const [productRes, imagesRes, variantsRes, keySpecsRes, specsRes, ratingsRes, pricesRes] = await Promise.all([
+      const [productRes, imagesRes, variantsRes, keySpecsRes, specsRes, ratingsRes] = await Promise.all([
         supabase.from('products').select('*, brands(name, logo)').eq('id', productId).single(),
         supabase.from('product_images').select('*').eq('product_id', productId).order('sort_order'),
         supabase.from('product_variants').select('*').eq('product_id', productId).order('storage'),
         supabase.from('key_specifications').select('*').eq('product_id', productId).order('sort_order'),
         supabase.from('specifications').select('*').eq('product_id', productId).order('spec_group, sort_order'),
-        supabase.from('expert_ratings').select('*').eq('product_id', productId).single(),
-        supabase.from('prices').select('*, stores(name, logo, is_official), product_variants(storage, color)').eq('product_id', productId).order('price')
+        supabase.from('expert_ratings').select('*').eq('product_id', productId).single()
       ])
 
       if (productRes.error) throw productRes.error
+
+      // Fetch prices - query by product_id directly since we confirmed variant_id is populated
+      let pricesData = []
+      if (productRes.data?.id) {
+        try {
+          const { data: allPrices, error } = await supabase
+            .from('prices')
+            .select('id, product_id, variant_id, store_id, price, affiliate_url, updated_at')
+            .eq('product_id', productRes.data.id)
+          
+          console.log('Prices for product:', productRes.data.id, '- Count:', allPrices?.length || 0, 'Error:', error)
+          
+          if (allPrices && allPrices.length > 0) {
+            // Now fetch the full details with relationships
+            const pricesRes = await supabase
+              .from('prices')
+              .select('*, stores(id, name, logo, is_official), product_variants(id, storage)')
+              .eq('product_id', productRes.data.id)
+              .order('price')
+            
+            pricesData = pricesRes.data || []
+            console.log('Prices with relationships:', pricesData.length)
+          }
+        } catch (error) {
+          console.error('Error fetching prices:', error)
+        }
+      }
 
       setProductData({
         product: productRes.data,
@@ -55,7 +81,7 @@ export default function ProductPreviewPage({ params }) {
         keySpecs: keySpecsRes.data || [],
         specs: specsRes.data || [],
         ratings: ratingsRes.data,
-        prices: pricesRes.data || []
+        prices: pricesData
       })
     } catch (error) {
       console.error('Error fetching product data:', error)
