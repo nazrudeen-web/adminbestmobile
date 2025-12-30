@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
 import { Send, Loader, Zap, Trash2, X } from 'lucide-react'
 
-export function AiSheet({ isOpen, onClose, context = 'mobile specifications' }) {
+export function AiSheet({ isOpen, onClose, context = 'mobile specifications', productData = null }) {
   const { toast } = useToast()
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -42,7 +42,8 @@ export function AiSheet({ isOpen, onClose, context = 'mobile specifications' }) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: input,
-          context: context
+          context: context,
+          productData: productData
         })
       })
 

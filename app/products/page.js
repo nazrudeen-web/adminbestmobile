@@ -2,6 +2,10 @@ import { supabase } from "@/lib/supabase"
 import { PageHeader } from "@/components/layout/page-header"
 import { ProductsTable } from "@/components/tables/products-table"
 
+// Disable static caching - always fetch fresh data
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 async function getProducts() {
   const { data, error } = await supabase
     .from('products')

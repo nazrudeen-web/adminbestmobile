@@ -5,36 +5,47 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 })
 
-const SYSTEM_PROMPT = `You are a mobile phone product copywriter and content specialist for an admin panel.
+const SYSTEM_PROMPT = `You are a mobile phone product copywriter for an admin panel.
 Your tasks:
-1. Write professional product descriptions and marketing copy
-2. Create device overviews and specifications summaries
-3. Write comparison articles between phones
+1. Write professional product descriptions using provided specifications
+2. Create device overviews
+3. Write marketing copy
 4. Generate engaging product content
-5. Provide writing suggestions for mobile phone topics
 
 GUIDELINES:
-- For product descriptions: Keep it concise (3-5 key points), professional, marketing-focused
-- For accuracy: If you're unsure about device specs (OS version, exact release year), ask user for details
-- For Samsung Galaxy A series: Always verify - A-series phones have different specs by region/year
-- Format with bullet points for easy reading
-- Include key features that matter to buyers (display, camera, battery, price tier)
-- Be honest if you lack current information - ask user to provide specs from their database
+- When specs are PROVIDED: Use them directly - write description without asking
+- When specs are MISSING: Clearly state "Please provide specs: [list needed]"
+- Format with bullet points (3-5 key points max)
+- Keep descriptions concise, professional, marketing-focused
+- Highlight unique features at this price tier
+- Focus on what buyers care about: display, camera, battery, processor, price position
 
-When user asks for product description:
-- Ask briefly: "What are this device's main specs?" if details are unclear
-- Never use outdated info (check year/generation)
-- Focus on what makes it special at its price point`
+OUTPUT FORMAT:
+**[Device Name]**
+• Key feature 1
+• Key feature 2
+• Key feature 3
+• Key feature 4
+• Price positioning/target user`
 
 export async function POST(request) {
   try {
-    const { message, context = 'mobile specifications' } = await request.json()
+    const { message, context = 'mobile specifications', productData } = await request.json()
 
     if (!message?.trim()) {
       return NextResponse.json(
         { success: false, error: 'Message is required' },
         { status: 400 }
       )
+    }
+
+    // Build message with product data if provided
+    let userContent = message
+    if (productData) {
+      userContent = `Product Data from Database:
+${JSON.stringify(productData, null, 2)}
+
+User Request: ${message}`
     }
 
     // Use Groq for AI responses
@@ -48,7 +59,7 @@ export async function POST(request) {
           },
           {
             role: 'user',
-            content: message
+            content: userContent
           }
         ],
         max_tokens: 1024,
