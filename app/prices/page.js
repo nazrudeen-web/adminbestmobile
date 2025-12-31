@@ -2,6 +2,9 @@ import { supabase } from "@/lib/supabase"
 import { PageHeader } from "@/components/layout/page-header"
 import { PricesTable } from "@/components/tables/prices-table"
 
+// Always fetch fresh prices; avoid build-time caching
+export const revalidate = 0
+
 async function getPrices() {
   try {
     const { data, error } = await supabase
