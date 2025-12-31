@@ -6,12 +6,7 @@ import * as cheerio from 'cheerio'
 const SPEC_MAPPING = {
   // Network & Connectivity
   'Technology': { group: 'Network', name: 'Network Technology' },
-  'Network': { group: 'Network', name: 'Network' },
-  '2G': { group: 'Network', name: '2G Networks' },
-  '3G': { group: 'Network', name: '3G Networks' },
-  '4G': { group: 'Network', name: '4G Networks' },
-  '5G': { group: 'Network', name: '5G Networks' },
-  'Speed': { group: 'Network', name: 'Speed' },
+  'Network': { group: 'Network', name: 'Network Technology' }, // collapse to one field
   
   // Launch & Status
   'Announced': { group: 'Launch', name: 'Announced' },
@@ -93,7 +88,6 @@ const SPEC_MAPPING = {
   'Repairability': { group: 'Tests', name: 'Repairability' },
   
   // Misc
-  'Price': { group: 'Pricing', name: 'Price' },
   'SAR': { group: 'Safety', name: 'SAR Rating' }
 }
 
@@ -326,10 +320,20 @@ async function scrapePhoneDetails(phoneUrl) {
             return
           }
 
-          // Regular spec mapping
+          // Regular spec mapping with Network cleanup
           const mapped = SPEC_MAPPING[specName] || findClosestMapping(specName)
           
           if (mapped) {
+            // Skip detailed network bands/speed; keep only Network Technology
+            if (mapped.group === 'Network' && mapped.name !== 'Network Technology') {
+              return
+            }
+
+            // Skip Pricing rows entirely
+            if (mapped.group === 'Pricing') {
+              return
+            }
+
             // Avoid duplicates - check by group + name
             if (!specs.find(s => s.spec_name === mapped.name && s.spec_group === mapped.group)) {
               specs.push({
@@ -538,7 +542,6 @@ function findClosestMapping(specName) {
   if (lowerName.includes('repairability')) return { group: 'Tests', name: 'Repairability' }
   
   // Misc
-  if (lowerName.includes('price')) return { group: 'Pricing', name: 'Price' }
   if (lowerName.includes('sar')) return { group: 'Safety', name: 'SAR Rating' }
   
   return null

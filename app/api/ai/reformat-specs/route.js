@@ -126,7 +126,18 @@ RULES:
 
     return NextResponse.json({
       success: true,
-      data: reformattedData,
+      data: {
+        ...reformattedData,
+        specifications: (reformattedData.specifications || []).filter(
+          (s) => {
+            // Keep only Network Technology in Network group
+            if (s.spec_group === 'Network' && s.spec_name !== 'Network Technology') return false
+            // Drop any Pricing/Price rows
+            if (s.spec_group === 'Pricing' || s.spec_name?.toLowerCase() === 'price') return false
+            return true
+          }
+        )
+      },
       source: 'groq',
       usage: {
         total_tokens: response.usage.total_tokens

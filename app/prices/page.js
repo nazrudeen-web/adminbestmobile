@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase"
-import { PageHeader } from "@/components/layout/page-header"
 import { PricesTable } from "@/components/tables/prices-table"
 
 // Always fetch fresh prices; avoid build-time caching
@@ -42,13 +41,6 @@ export default async function PricesPage() {
   const prices = await getPrices()
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Prices"
-        description="Manage product prices across stores"
-        action={{ label: "Add Price", href: "/prices/new" }}
-      />
-      <PricesTable initialPrices={prices} />
-    </div>
+    <PricesTable initialPrices={prices} />
   )
 }

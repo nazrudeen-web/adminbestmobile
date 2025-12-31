@@ -15,12 +15,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
 import { DeleteDialog } from "@/components/shared/delete-dialog"
 import { useToast } from "@/components/ui/toast"
-import { Edit, Trash2, Search, ExternalLink, ChevronDown, ChevronRight, Filter, X, ChevronLeft, ChevronsLeft, ChevronsRight } from "lucide-react"
-
-const ITEMS_PER_PAGE_OPTIONS = [10, 25, 50, 100]
+import { Edit, Trash2, Search, ExternalLink, ChevronDown, ChevronRight, Plus, TrendingDown, DollarSign } from "lucide-react"
 
 export function PricesTable({ initialPrices }) {
   const router = useRouter()
@@ -29,17 +26,7 @@ export function PricesTable({ initialPrices }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteId, setDeleteId] = useState(null)
   const [deleting, setDeleting] = useState(false)
-  
-  // New filter states
-  const [selectedProduct, setSelectedProduct] = useState('')
-  const [selectedStore, setSelectedStore] = useState('')
-  const [selectedStoreType, setSelectedStoreType] = useState('')
-  const [viewMode, setViewMode] = useState('grouped') // 'table' or 'grouped' - DEFAULT: grouped
   const [expandedProducts, setExpandedProducts] = useState(new Set())
-  
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(25)
 
   // Get unique products and stores for filters
   const uniqueProducts = useMemo(() => {
@@ -66,60 +53,62 @@ export function PricesTable({ initialPrices }) {
     return Array.from(stores, ([id, data]) => ({ id, ...data })).sort((a, b) => a.name.localeCompare(b.name))
   }, [prices])
 
-  // Filter prices
+  // Filter prices based on search query only
   const filteredPrices = useMemo(() => {
     return prices.filter(price => {
-      const matchesSearch = searchQuery === '' || 
-        price.products?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        price.stores?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        price.product_variants?.storage?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        price.product_variants?.color?.toLowerCase().includes(searchQuery.toLowerCase())
-      
-      const matchesProduct = selectedProduct === '' || price.products?.id === selectedProduct
-      const matchesStore = selectedStore === '' || price.stores?.id === selectedStore
-      
-      let matchesStoreType = true
-      if (selectedStoreType === 'official') {
-        matchesStoreType = price.stores?.is_official === true
-      } else if (selectedStoreType === 'authorized') {
-        matchesStoreType = price.stores?.is_authorized_seller === true && !price.stores?.is_official
-      } else if (selectedStoreType === 'regular') {
-        matchesStoreType = !price.stores?.is_official && !price.stores?.is_authorized_seller
-      }
-      
-      return matchesSearch && matchesProduct && matchesStore && matchesStoreType
+      if (searchQuery === '') return true
+      const search = searchQuery.toLowerCase()
+      return (
+        price.products?.name.toLowerCase().includes(search) ||
+        price.stores?.name.toLowerCase().includes(search) ||
+        price.product_variants?.storage?.toLowerCase().includes(search) ||
+        price.product_variants?.color?.toLowerCase().includes(search)
+      )
     })
-  }, [prices, searchQuery, selectedProduct, selectedStore, selectedStoreType])
+  }, [prices, searchQuery])
 
-  // Group prices by product
+  // Group prices by product, then by storage variant
   const groupedPrices = useMemo(() => {
-    const groups = new Map()
+    const productGroups = new Map()
+    
+    // First group by product
     filteredPrices.forEach(price => {
       const productId = price.products?.id || 'unknown'
       const productName = price.products?.name || 'Unknown Product'
-      if (!groups.has(productId)) {
-        groups.set(productId, { productName, prices: [] })
+      
+      if (!productGroups.has(productId)) {
+        productGroups.set(productId, { productName, variants: new Map() })
       }
-      groups.get(productId).prices.push(price)
+      
+      const product = productGroups.get(productId)
+      const storage = price.product_variants?.storage || 'Unknown'
+      
+      if (!product.variants.has(storage)) {
+        product.variants.set(storage, [])
+      }
+      product.variants.get(storage).push(price)
     })
-    return Array.from(groups, ([id, data]) => ({ productId: id, ...data }))
+    
+    // Convert to array with sorted variants
+    return Array.from(productGroups.values())
+      .map(product => ({
+        ...product,
+        variants: Array.from(product.variants.entries())
+          .sort(([storageA], [storageB]) => {
+            const numA = parseInt(storageA)
+            const numB = parseInt(storageB)
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB
+            return storageA.localeCompare(storageB)
+          })
+          .map(([storage, prices]) => ({
+            storage,
+            prices: prices.sort((a, b) => a.price - b.price)
+          }))
+      }))
       .sort((a, b) => a.productName.localeCompare(b.productName))
   }, [filteredPrices])
 
-  // Pagination logic
-  const paginatedPrices = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    return filteredPrices.slice(startIndex, startIndex + itemsPerPage)
-  }, [filteredPrices, currentPage, itemsPerPage])
-
-  const totalPages = Math.ceil(filteredPrices.length / itemsPerPage)
-
-  // Reset to page 1 when filters change
-  const handleFilterChange = (setter) => (value) => {
-    setter(value)
-    setCurrentPage(1)
-  }
-
+  // Toggle product expand
   const toggleProductExpand = (productId) => {
     const newExpanded = new Set(expandedProducts)
     if (newExpanded.has(productId)) {
@@ -131,22 +120,12 @@ export function PricesTable({ initialPrices }) {
   }
 
   const expandAll = () => {
-    setExpandedProducts(new Set(groupedPrices.map(g => g.productId)))
+    setExpandedProducts(new Set(groupedPrices.map((g, idx) => idx)))
   }
 
   const collapseAll = () => {
     setExpandedProducts(new Set())
   }
-
-  const clearFilters = () => {
-    setSearchQuery('')
-    setSelectedProduct('')
-    setSelectedStore('')
-    setSelectedStoreType('')
-    setCurrentPage(1)
-  }
-
-  const hasActiveFilters = searchQuery || selectedProduct || selectedStore || selectedStoreType
 
   const handleDelete = async () => {
     setDeleting(true)
@@ -220,364 +199,215 @@ export function PricesTable({ initialPrices }) {
     </div>
   )
 
-  const Pagination = () => {
-    if (totalPages <= 1) return null
-    
-    return (
-      <div className="flex items-center justify-between px-2 py-4 border-t">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Show</span>
-          <Select
-            value={itemsPerPage}
-            onChange={(e) => {
-              setItemsPerPage(Number(e.target.value))
-              setCurrentPage(1)
-            }}
-            className="w-20 h-9"
-          >
-            {ITEMS_PER_PAGE_OPTIONS.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </Select>
-          <span>of {filteredPrices.length} entries</span>
-        </div>
-        
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentPage(1)}
-            disabled={currentPage === 1}
-            className="h-8 w-8"
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="h-8 w-8"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <div className="flex items-center gap-1 px-2">
-            <span className="text-sm">Page</span>
-            <Input
-              type="number"
-              min={1}
-              max={totalPages}
-              value={currentPage}
-              onChange={(e) => {
-                const page = parseInt(e.target.value)
-                if (page >= 1 && page <= totalPages) {
-                  setCurrentPage(page)
-                }
-              }}
-              className="w-14 h-8 text-center"
-            />
-            <span className="text-sm">of {totalPages}</span>
-          </div>
-          
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="h-8 w-8"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="h-8 w-8"
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    )
+  const handleFilterChange = (setter) => (value) => {
+    setter(value)
   }
 
   return (
     <div className="space-y-4">
+      {/* Header with Add Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Price Management</h2>
+          <p className="text-sm text-muted-foreground mt-1">View and manage product prices across stores</p>
+        </div>
+        <Button onClick={() => router.push('/prices/new')} size="lg" className="gap-2">
+          <Plus className="h-5 w-5" />
+          Add New Price
+        </Button>
+      </div>
+
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-          <div className="text-2xl font-bold text-blue-600">{prices.length}</div>
-          <div className="text-sm text-muted-foreground">Total Prices</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-blue-600">{prices.length}</div>
+              <div className="text-xs text-muted-foreground">Total Prices</div>
+            </div>
+            <DollarSign className="h-8 w-8 text-blue-300" />
+          </div>
         </div>
         <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
-          <div className="text-2xl font-bold text-green-600">{uniqueProducts.length}</div>
-          <div className="text-sm text-muted-foreground">Products</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-green-600">{uniqueProducts.length}</div>
+              <div className="text-xs text-muted-foreground">Products</div>
+            </div>
+            <span className="text-3xl">📱</span>
+          </div>
         </div>
         <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-          <div className="text-2xl font-bold text-purple-600">{uniqueStores.length}</div>
-          <div className="text-sm text-muted-foreground">Stores</div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-purple-600">{uniqueStores.length}</div>
+              <div className="text-xs text-muted-foreground">Stores</div>
+            </div>
+            <span className="text-3xl">🏪</span>
+          </div>
         </div>
         <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-4 border border-orange-200 dark:border-orange-800">
-          <div className="text-2xl font-bold text-orange-600">{filteredPrices.length}</div>
-          <div className="text-sm text-muted-foreground">Filtered Results</div>
-        </div>
-      </div>
-
-      {/* Filters Section */}
-      <div className="bg-muted/30 rounded-lg p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">Filters</span>
-          </div>
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8">
-                <X className="h-3 w-3 mr-1" />
-                Clear All
-              </Button>
-            )}
-            <div className="flex items-center gap-1 bg-background rounded-lg border p-1">
-              <Button
-                variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('table')}
-                className="h-7 px-3"
-              >
-                Table
-              </Button>
-              <Button
-                variant={viewMode === 'grouped' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('grouped')}
-                className="h-7 px-3"
-              >
-                Grouped
-              </Button>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-2xl font-bold text-orange-600">{filteredPrices.length}</div>
+              <div className="text-xs text-muted-foreground">Filtered Results</div>
             </div>
+            <TrendingDown className="h-8 w-8 text-orange-300" />
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div className="relative lg:col-span-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => handleFilterChange(setSearchQuery)(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          
-          <Select
-            value={selectedProduct}
-            onChange={(e) => handleFilterChange(setSelectedProduct)(e.target.value)}
-          >
-            <option value="">All Products ({uniqueProducts.length})</option>
-            {uniqueProducts.map(product => (
-              <option key={product.id} value={product.id}>{product.name}</option>
-            ))}
-          </Select>
-          
-          <Select
-            value={selectedStore}
-            onChange={(e) => handleFilterChange(setSelectedStore)(e.target.value)}
-          >
-            <option value="">All Stores ({uniqueStores.length})</option>
-            {uniqueStores.map(store => (
-              <option key={store.id} value={store.id}>
-                {store.name} {store.isOfficial ? '(Official)' : store.isAuthorized ? '(Authorized)' : ''}
-              </option>
-            ))}
-          </Select>
-          
-          <Select
-            value={selectedStoreType}
-            onChange={(e) => handleFilterChange(setSelectedStoreType)(e.target.value)}
-          >
-            <option value="">All Store Types</option>
-            <option value="official">Official Stores</option>
-            <option value="authorized">Authorized Sellers</option>
-            <option value="regular">Regular Stores</option>
-          </Select>
-          
-          <Select
-            value={itemsPerPage}
-            onChange={(e) => {
-              setItemsPerPage(Number(e.target.value))
-              setCurrentPage(1)
-            }}
-          >
-            {ITEMS_PER_PAGE_OPTIONS.map(option => (
-              <option key={option} value={option}>{option} per page</option>
-            ))}
-          </Select>
         </div>
       </div>
 
-      {/* Table View */}
-      {viewMode === 'table' && (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">Product</TableHead>
-                  <TableHead className="font-semibold">Variant</TableHead>
-                  <TableHead className="font-semibold">Store</TableHead>
-                  <TableHead className="font-semibold">Store Type</TableHead>
-                  <TableHead className="font-semibold">Price</TableHead>
-                  <TableHead className="font-semibold">Updated</TableHead>
-                  <TableHead className="text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedPrices.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                      No prices found matching your filters
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedPrices.map((price) => (
-                    <TableRow key={price.id} className="hover:bg-muted/30">
-                      <TableCell className="font-medium">
-                        {price.products?.name || 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm bg-muted px-2 py-1 rounded">
-                          {price.product_variants?.storage} - {price.product_variants?.color}
-                        </span>
-                      </TableCell>
-                      <TableCell>{price.stores?.name || 'N/A'}</TableCell>
-                      <TableCell>
-                        <StoreTypeBadge store={price.stores} />
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-semibold text-lg">{formatPrice(price.price)}</span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(price.updated_at)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <PriceActions price={price} />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <Pagination />
-        </div>
-      )}
+      {/* Simple Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search product or store..."
+          value={searchQuery}
+          onChange={(e) => handleFilterChange(setSearchQuery)(e.target.value)}
+          className="pl-9 text-sm"
+        />
+      </div>
 
       {/* Grouped View */}
-      {viewMode === 'grouped' && (
-        <div className="space-y-4">
-          {groupedPrices.length > 1 && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={expandAll}>
-                Expand All
-              </Button>
-              <Button variant="outline" size="sm" onClick={collapseAll}>
-                Collapse All
-              </Button>
-            </div>
-          )}
-          
-          {groupedPrices.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8 border rounded-lg">
-              No prices found matching your filters
-            </div>
-          ) : (
-            groupedPrices.map(group => (
-              <div key={group.productId} className="border rounded-lg overflow-hidden">
+      <div className="space-y-4">
+        {groupedPrices.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8 border rounded-lg">
+            No prices found matching your filters
+          </div>
+        ) : (
+          groupedPrices.map(productGroup => (
+              <div key={productGroup.productName} className="border rounded-lg overflow-hidden">
+                {/* Product Header */}
                 <button
-                  onClick={() => toggleProductExpand(group.productId)}
-                  className="w-full flex items-center justify-between p-4 bg-muted/50 hover:bg-muted/70 transition-colors"
+                  onClick={() => toggleProductExpand(productGroup.productName)}
+                  className="w-full flex items-center justify-between p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/50 dark:to-blue-950/50 hover:from-indigo-100 hover:to-blue-100 dark:hover:from-indigo-950/70 dark:hover:to-blue-950/70 transition-all border-b-2 border-indigo-200/50"
                 >
-                  <div className="flex items-center gap-3">
-                    {expandedProducts.has(group.productId) ? (
-                      <ChevronDown className="h-5 w-5" />
+                  <div className="flex items-center gap-4">
+                    {expandedProducts.has(productGroup.productName) ? (
+                      <ChevronDown className="h-6 w-6 text-indigo-600" />
                     ) : (
-                      <ChevronRight className="h-5 w-5" />
+                      <ChevronRight className="h-6 w-6 text-indigo-600" />
                     )}
-                    <span className="font-semibold text-lg">{group.productName}</span>
-                    <Badge variant="secondary" className="ml-2">
-                      {group.prices.length} price{group.prices.length !== 1 ? 's' : ''}
+                    <span className="font-bold text-xl text-foreground">{productGroup.productName}</span>
+                    <Badge className="bg-indigo-600 text-white font-semibold ml-2">
+                      {productGroup.variants.reduce((sum, v) => sum + v.prices.length, 0)} prices
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>
-                      {new Set(group.prices.map(p => p.stores?.id)).size} store{new Set(group.prices.map(p => p.stores?.id)).size !== 1 ? 's' : ''}
-                    </span>
-                    <span>
-                      {new Set(group.prices.map(p => p.product_variants?.id)).size} variant{new Set(group.prices.map(p => p.product_variants?.id)).size !== 1 ? 's' : ''}
-                    </span>
-                    <span className="font-medium text-foreground">
-                      From {formatPrice(Math.min(...group.prices.map(p => p.price)))}
-                    </span>
+                  <div className="flex items-center gap-8 text-sm">
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Total Variants</div>
+                      <div className="font-bold text-lg">{productGroup.variants.length}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Price Range</div>
+                      <div className="font-bold text-green-600">
+                        {formatPrice(
+                          Math.min(...productGroup.variants.flatMap(v => v.prices.map(p => p.price)))
+                        )} - {formatPrice(
+                          Math.max(...productGroup.variants.flatMap(v => v.prices.map(p => p.price)))
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </button>
-                
-                {expandedProducts.has(group.productId) && (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Variant</TableHead>
-                          <TableHead>Store</TableHead>
-                          <TableHead>Store Type</TableHead>
-                          <TableHead>Price</TableHead>
-                          <TableHead>Updated</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {group.prices
-                          .sort((a, b) => a.price - b.price)
-                          .map((price) => (
-                            <TableRow key={price.id} className="hover:bg-muted/30">
-                              <TableCell>
-                                <span className="text-sm bg-muted px-2 py-1 rounded">
-                                  {price.product_variants?.storage} - {price.product_variants?.color}
-                                </span>
-                              </TableCell>
-                              <TableCell>{price.stores?.name || 'N/A'}</TableCell>
-                              <TableCell>
-                                <StoreTypeBadge store={price.stores} />
-                              </TableCell>
-                              <TableCell>
-                                <span className="font-semibold text-lg">{formatPrice(price.price)}</span>
-                              </TableCell>
-                              <TableCell className="text-muted-foreground text-sm">
-                                {formatDate(price.updated_at)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <PriceActions price={price} />
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
+
+                {/* Product Content */}
+                {expandedProducts.has(productGroup.productName) && (
+                  <div className="space-y-3 p-4 bg-muted/10">
+                    {productGroup.variants.map((variant, variantIdx) => {
+                      const variantKey = `${productGroup.productName}-${variant.storage}`
+                      const isExpanded = expandedProducts.has(variantKey)
+                      
+                      return (
+                        <div key={variantKey} className="border rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+                          {/* Variant Header */}
+                          <button
+                            onClick={() => {
+                              const newExpanded = new Set(expandedProducts)
+                              if (newExpanded.has(variantKey)) {
+                                newExpanded.delete(variantKey)
+                              } else {
+                                newExpanded.add(variantKey)
+                              }
+                              setExpandedProducts(newExpanded)
+                            }}
+                            className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/40 dark:to-cyan-950/40 hover:from-blue-100 hover:to-cyan-100 dark:hover:from-blue-950/60 dark:hover:to-cyan-950/60 transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              {isExpanded ? (
+                                <ChevronDown className="h-5 w-5 text-blue-600" />
+                              ) : (
+                                <ChevronRight className="h-5 w-5 text-blue-600" />
+                              )}
+                              <Badge className="bg-blue-600 text-white font-bold text-base px-3">
+                                {variant.storage}
+                              </Badge>
+                              <span className="text-muted-foreground text-sm ml-2">{variant.prices.length} stores</span>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-green-600">
+                                {formatPrice(Math.min(...variant.prices.map(p => p.price)))} - {formatPrice(Math.max(...variant.prices.map(p => p.price)))}
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Store List */}
+                          {isExpanded && (
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="bg-muted/50">
+                                    <TableHead className="font-bold">Store</TableHead>
+                                    <TableHead className="font-bold">Store Type</TableHead>
+                                    <TableHead className="font-bold">
+                                      <div className="flex items-center gap-2">
+                                        <DollarSign className="h-4 w-4" />
+                                        Price
+                                      </div>
+                                    </TableHead>
+                                    <TableHead className="font-bold">Updated</TableHead>
+                                    <TableHead className="text-right font-bold">Actions</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {variant.prices.map((price) => (
+                                    <TableRow key={price.id} className="hover:bg-blue-50/50 dark:hover:bg-blue-950/20">
+                                      <TableCell className="font-semibold">{price.stores?.name || 'N/A'}</TableCell>
+                                      <TableCell>
+                                        <StoreTypeBadge store={price.stores} />
+                                      </TableCell>
+                                      <TableCell>
+                                        <span className="font-bold text-lg text-green-600">{formatPrice(price.price)}</span>
+                                      </TableCell>
+                                      <TableCell className="text-muted-foreground text-sm">
+                                        {formatDate(price.updated_at)}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        <PriceActions price={price} />
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
             ))
           )}
         </div>
-      )}
 
-      <DeleteDialog
-        open={!!deleteId}
-        onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={handleDelete}
-        title="Delete Price"
-        description="Are you sure you want to delete this price entry?"
-      />
-    </div>
+        <DeleteDialog
+          open={!!deleteId}
+          onOpenChange={(open) => !open && setDeleteId(null)}
+          onConfirm={handleDelete}
+          title="Delete Price"
+          description="Are you sure you want to delete this price entry?"
+        />
+      </div>
   )
 }

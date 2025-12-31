@@ -24,6 +24,15 @@ export default function ProductSpecsPage({ params }) {
   const [editingId, setEditingId] = useState(null)
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [scrapedData, setScrapedData] = useState(null)
+  const [aiData, setAiData] = useState(null)
+  const [scraping, setScraping] = useState(false)
+  const [aiReformatting, setAiReformatting] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [alsoUpdateKeySpecs, setAlsoUpdateKeySpecs] = useState(true)
   const [formData, setFormData] = useState({
     spec_group: '',
     spec_name: '',
@@ -163,6 +172,132 @@ export default function ProductSpecsPage({ params }) {
     }
   }
 
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return
+    setSearching(true)
+    setSearchResults([])
+    try {
+      const res = await fetch('/api/scrape/gsmareana', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'search', phoneName: searchTerm })
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setSearchResults(data.results || [])
+      toast({ title: 'Search complete', description: `Found ${data.results?.length || 0} matches` })
+    } catch (error) {
+      console.error('Search error:', error)
+      toast({ title: 'Error', description: error.message || 'Search failed', variant: 'destructive' })
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const handleScrape = async (url) => {
+    setScraping(true)
+    setAiData(null)
+    try {
+      const res = await fetch('/api/scrape/gsmareana', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'scrape', phoneUrl: url })
+      })
+      const data = await res.json()
+      if (data.error || data.success === false) throw new Error(data.error || 'Scrape failed')
+      setScrapedData(data.data || data)
+      toast({ title: 'Specs fetched', description: data.data?.name || 'Scrape completed' })
+    } catch (error) {
+      console.error('Scrape error:', error)
+      toast({ title: 'Error', description: error.message || 'Failed to fetch specs', variant: 'destructive' })
+    } finally {
+      setScraping(false)
+    }
+  }
+
+  const isGsmarenaUrl = (value = '') => value.includes('gsmarena.com') && value.includes('.php')
+
+  const handleReformat = async () => {
+    if (!scrapedData) {
+      toast({ title: 'Missing data', description: 'Fetch from GSMArena first', variant: 'destructive' })
+      return
+    }
+    setAiReformatting(true)
+    try {
+      const res = await fetch('/api/ai/reformat-specs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneData: scrapedData })
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'AI reformat failed')
+      setAiData(data.data)
+      toast({ title: 'AI formatted', description: 'Clean specs ready to import' })
+    } catch (error) {
+      console.error('AI reformat error:', error)
+      toast({ title: 'Error', description: error.message || 'AI failed', variant: 'destructive' })
+    } finally {
+      setAiReformatting(false)
+    }
+  }
+
+  const inferIcon = (title = '') => {
+    const lower = title.toLowerCase()
+    if (lower.includes('display') || lower.includes('screen')) return 'display'
+    if (lower.includes('processor') || lower.includes('chip') || lower.includes('cpu')) return 'processor'
+    if (lower.includes('camera')) return 'camera'
+    if (lower.includes('battery')) return 'battery'
+    return 'info'
+  }
+
+  const importKeySpecs = async (sourceKeySpecs = []) => {
+    if (!alsoUpdateKeySpecs || sourceKeySpecs.length === 0) return
+    const rows = sourceKeySpecs.map((spec, idx) => ({
+      product_id: productId,
+      icon: spec.icon || inferIcon(spec.title),
+      title: spec.title || 'Spec',
+      value: spec.value || spec.spec_value || '',
+      sort_order: idx
+    }))
+    await supabase.from('key_specifications').delete().eq('product_id', productId)
+    const { error } = await supabase.from('key_specifications').insert(rows)
+    if (error) throw error
+  }
+
+  const handleImportSpecs = async () => {
+    const sourceSpecs = aiData?.specifications || scrapedData?.specifications || []
+    const sourceKeySpecs = aiData?.keySpecifications || scrapedData?.keySpecifications || []
+    if (!productId || sourceSpecs.length === 0) {
+      toast({ title: 'Nothing to import', description: 'Run GSMArena fetch (and AI) first', variant: 'destructive' })
+      return
+    }
+
+    setImporting(true)
+    try {
+      const rows = sourceSpecs.map((spec, idx) => ({
+        product_id: productId,
+        spec_group: spec.spec_group || spec.group || 'Other',
+        spec_name: spec.spec_name || spec.name || 'Spec',
+        spec_value: spec.spec_value || spec.value || '',
+        sort_order: spec.sort_order ?? idx
+      }))
+
+      await supabase.from('specifications').delete().eq('product_id', productId)
+      const { error } = await supabase.from('specifications').insert(rows)
+      if (error) throw error
+
+      await importKeySpecs(sourceKeySpecs)
+
+      toast({ title: 'Imported', description: `Saved ${rows.length} specs${alsoUpdateKeySpecs ? ' + key specs' : ''}` })
+      fetchData()
+    } catch (error) {
+      console.error('Import specs error:', error)
+      toast({ title: 'Error', description: error.message || 'Import failed', variant: 'destructive' })
+    } finally {
+      setImporting(false)
+    }
+  }
+
   if (loading) return <LoadingSpinner />
 
   // Group specs by spec_group
@@ -181,6 +316,92 @@ export default function ProductSpecsPage({ params }) {
           {product?.brands?.name} - {product?.name}
         </p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Import from GSMArena + AI</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Search phone on GSMArena</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="e.g., Pixel 9 Pro"
+                  disabled={searching}
+                />
+                <Button onClick={handleSearch} disabled={searching || !searchTerm.trim()}>
+                  {searching ? 'Searching...' : 'Search'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleScrape(searchTerm)}
+                  disabled={scraping || !isGsmarenaUrl(searchTerm)}
+                >
+                  {scraping ? 'Fetching...' : 'Fetch link'}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>AI Reformat</Label>
+              <Button onClick={handleReformat} disabled={aiReformatting || !scrapedData} className="w-full">
+                {aiReformatting ? 'Formatting...' : 'Clean with AI'}
+              </Button>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={alsoUpdateKeySpecs}
+                  onChange={(e) => setAlsoUpdateKeySpecs(e.target.checked)}
+                />
+                Also update key specs
+              </label>
+            </div>
+          </div>
+
+          {searchResults.length > 0 && (
+            <div className="space-y-2">
+              <Label>Search Results</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {searchResults.map((result) => (
+                  <div key={result.url} className="border rounded p-3 flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="font-medium text-sm">{result.name}</p>
+                      <p className="text-xs text-muted-foreground break-words">{result.url}</p>
+                    </div>
+                    <Button size="sm" onClick={() => handleScrape(result.url)} disabled={scraping}>
+                      {scraping ? 'Fetching...' : 'Import'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(scrapedData || aiData) && (
+            <div className="bg-muted/40 border rounded p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-sm">Preview</p>
+                  <p className="text-xs text-muted-foreground">{(aiData || scrapedData)?.name || 'Specs ready'}</p>
+                </div>
+                <Button onClick={handleImportSpecs} disabled={importing} size="sm">
+                  {importing ? 'Saving...' : 'Save specs'}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                {(aiData?.specifications || scrapedData?.specifications || []).slice(0, 8).map((spec, idx) => (
+                  <div key={idx} className="border rounded p-2 bg-white">
+                    <p className="font-medium">{spec.spec_group || spec.group}</p>
+                    <p className="text-xs text-muted-foreground">{spec.spec_name || spec.name}: {spec.spec_value || spec.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add New Specification */}
       <Card>
